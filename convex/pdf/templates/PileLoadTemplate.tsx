@@ -275,7 +275,10 @@ export function PileLoadContent({
           {/* Load-Settlement Chart */}
           <View style={styles.chartContainer}>
             <Text style={styles.chartTitle}>Load-Settlement Curve</Text>
-            <LoadSettlementChart increments={pileLoadIncrements} />
+            <LoadSettlementChart
+              increments={pileLoadIncrements}
+              designLoadKips={specZone?.specPileDesignLoadKips ?? detail.designLoadKips}
+            />
           </View>
         </>
       )}
@@ -298,94 +301,122 @@ export function PileLoadContent({
   );
 }
 
-/** Simple SVG scatter plot of load (x) vs settlement (y, inverted). */
-function LoadSettlementChart({ increments }: { increments: any[] }) {
+/**
+ * Load-Settlement chart with grid, data points, connecting lines,
+ * and optional design load reference line.
+ * Axis labels rendered as react-pdf Text elements outside the SVG.
+ */
+function LoadSettlementChart({
+  increments,
+  designLoadKips,
+}: {
+  increments: any[];
+  designLoadKips?: number;
+}) {
   if (increments.length < 2) return null;
 
-  const W = 340;
-  const H = 160;
-  const PAD_L = 40;
-  const PAD_R = 15;
-  const PAD_T = 15;
-  const PAD_B = 25;
+  const W = 380;
+  const H = 180;
+  const PAD = 20;
 
   const loads = increments.map((i: any) => i.loadKips as number);
   const settlements = increments.map((i: any) => i.netSettlementIn as number);
-  const maxLoad = Math.max(...loads, 1);
+  const maxLoad = Math.max(...loads, designLoadKips ?? 0, 1);
   const maxSettlement = Math.max(...settlements, 0.01);
 
-  const scaleX = (v: number) => PAD_L + (v / maxLoad) * (W - PAD_L - PAD_R);
-  const scaleY = (v: number) => PAD_T + (v / maxSettlement) * (H - PAD_T - PAD_B);
+  // Round up to nice numbers
+  const niceMax = (v: number) => {
+    if (v <= 0) return 1;
+    const mag = Math.pow(10, Math.floor(Math.log10(v)));
+    return Math.ceil(v / mag) * mag;
+  };
+  const loadCeil = niceMax(maxLoad);
+  const settleCeil = Math.ceil(maxSettlement * 4) / 4 || 0.25;
+
+  const scaleX = (v: number) => PAD + (v / loadCeil) * (W - 2 * PAD);
+  const scaleY = (v: number) => PAD + (v / settleCeil) * (H - 2 * PAD);
 
   return (
-    <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-      {/* Grid lines */}
-      {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
-        const x = PAD_L + frac * (W - PAD_L - PAD_R);
-        return (
+    <View>
+      {/* Axis labels as Text elements */}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2, paddingHorizontal: PAD }}>
+        <Text style={{ fontSize: 6, color: "#888" }}>Settlement (in) ↓</Text>
+        <Text style={{ fontSize: 6, color: "#888" }}>→ Load (kips)</Text>
+      </View>
+
+      <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
+          const x = PAD + frac * (W - 2 * PAD);
+          const y = PAD + frac * (H - 2 * PAD);
+          return (
+            <React.Fragment key={`g-${frac}`}>
+              <Line x1={x} y1={PAD} x2={x} y2={H - PAD} stroke="#e5e5e5" strokeWidth={0.5} />
+              <Line x1={PAD} y1={y} x2={W - PAD} y2={y} stroke="#e5e5e5" strokeWidth={0.5} />
+            </React.Fragment>
+          );
+        })}
+
+        {/* Axes */}
+        <Line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="#999" strokeWidth={0.75} />
+        <Line x1={PAD} y1={PAD} x2={W - PAD} y2={PAD} stroke="#999" strokeWidth={0.75} />
+
+        {/* Design load reference line (dashed red) */}
+        {designLoadKips != null && designLoadKips > 0 && designLoadKips <= loadCeil && (
           <Line
-            key={`gx-${frac}`}
-            x1={x}
-            y1={PAD_T}
-            x2={x}
-            y2={H - PAD_B}
-            stroke="#eee"
-            strokeWidth={0.5}
+            x1={scaleX(designLoadKips)}
+            y1={PAD}
+            x2={scaleX(designLoadKips)}
+            y2={H - PAD}
+            stroke="#dc2626"
+            strokeWidth={0.75}
+            strokeDasharray="4,3"
           />
-        );
-      })}
-      {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
-        const y = PAD_T + frac * (H - PAD_T - PAD_B);
-        return (
-          <Line
-            key={`gy-${frac}`}
-            x1={PAD_L}
-            y1={y}
-            x2={W - PAD_R}
-            y2={y}
-            stroke="#eee"
-            strokeWidth={0.5}
-          />
-        );
-      })}
-      {/* Axes */}
-      <Line
-        x1={PAD_L}
-        y1={PAD_T}
-        x2={PAD_L}
-        y2={H - PAD_B}
-        stroke="#999"
-        strokeWidth={0.75}
-      />
-      <Line
-        x1={PAD_L}
-        y1={PAD_T}
-        x2={W - PAD_R}
-        y2={PAD_T}
-        stroke="#999"
-        strokeWidth={0.75}
-      />
-      {/* Data points + lines */}
-      {increments.map((inc: any, idx: number) => {
-        const x = scaleX(inc.loadKips);
-        const y = scaleY(inc.netSettlementIn);
-        const prev = idx > 0 ? increments[idx - 1] : null;
-        return (
-          <React.Fragment key={idx}>
-            {prev && (
-              <Line
-                x1={scaleX(prev.loadKips)}
-                y1={scaleY(prev.netSettlementIn)}
-                x2={x}
-                y2={y}
-                stroke={ACCENT}
-                strokeWidth={1.25}
-              />
-            )}
-            <Circle cx={x} cy={y} r={2.5} fill={ACCENT} />
-          </React.Fragment>
-        );
-      })}
-    </Svg>
+        )}
+
+        {/* Data lines + points */}
+        {increments.map((inc: any, idx: number) => {
+          const prev = idx > 0 ? increments[idx - 1] : null;
+          const x = scaleX(inc.loadKips);
+          const y = scaleY(inc.netSettlementIn);
+          return (
+            <React.Fragment key={idx}>
+              {prev && (
+                <Line
+                  x1={scaleX(prev.loadKips)}
+                  y1={scaleY(prev.netSettlementIn)}
+                  x2={x}
+                  y2={y}
+                  stroke={ACCENT}
+                  strokeWidth={1.5}
+                />
+              )}
+              <Circle cx={x} cy={y} r={3} fill={ACCENT} />
+            </React.Fragment>
+          );
+        })}
+      </Svg>
+
+      {/* Tick labels below chart */}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: PAD, marginTop: 1 }}>
+        <Text style={{ fontSize: 6, color: "#888" }}>0</Text>
+        <Text style={{ fontSize: 6, color: "#888" }}>{Math.round(loadCeil / 2)}</Text>
+        <Text style={{ fontSize: 6, color: "#888" }}>{loadCeil}</Text>
+      </View>
+
+      {/* Legend */}
+      <View style={{ flexDirection: "row", marginTop: 4, alignItems: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <View style={{ width: 12, height: 2, backgroundColor: ACCENT, marginRight: 4 }} />
+          <Text style={{ fontSize: 6, color: "#666" }}>Load vs Settlement</Text>
+        </View>
+        {designLoadKips != null && designLoadKips > 0 && (
+          <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 12 }}>
+            <View style={{ width: 12, height: 1, backgroundColor: "#dc2626", marginRight: 4 }} />
+            <Text style={{ fontSize: 6, color: "#dc2626" }}>Design Load ({designLoadKips} kips)</Text>
+          </View>
+        )}
+      </View>
+    </View>
   );
 }

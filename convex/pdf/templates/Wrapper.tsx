@@ -39,7 +39,9 @@ const styles = StyleSheet.create({
     paddingRight: 20,
   },
   logo: {
-    maxHeight: 50,
+    maxHeight: 45,
+    maxWidth: 150,
+    objectFit: "contain" as const,
     marginBottom: 4,
   },
   orgName: {
