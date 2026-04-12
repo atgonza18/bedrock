@@ -2,32 +2,12 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/dm-sans";
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  --color-light: #ffffff;
-  --color-dark: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    color: var(--color-light);
-    background: var(--color-dark);
-    font-family: Arial, Helvetica, sans-serif;
-  }
-}
-
-@media (prefers-color-scheme: light) {
-  body {
-    color: var(--color-dark);
-    background: var(--color-light);
-    font-family: Arial, Helvetica, sans-serif;
-  }
-}
-
 @theme inline {
-  --font-heading: var(--font-sans);
+  --font-heading: 'DM Sans Variable', sans-serif;
   --font-sans: 'Geist Variable', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -67,75 +47,86 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Brand accents */
+  --color-amber-brand: var(--amber-brand);
+  --color-amber-brand-foreground: var(--amber-brand-foreground);
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* Warm stone palette — slate undertones with amber accent */
+  --background: oklch(0.98 0.002 80);
+  --foreground: oklch(0.17 0.015 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.17 0.015 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.17 0.015 260);
+  --primary: oklch(0.35 0.04 250);
+  --primary-foreground: oklch(0.98 0.002 80);
+  --secondary: oklch(0.955 0.005 80);
+  --secondary-foreground: oklch(0.30 0.02 250);
+  --muted: oklch(0.955 0.005 80);
+  --muted-foreground: oklch(0.52 0.015 250);
+  --accent: oklch(0.955 0.008 75);
+  --accent-foreground: oklch(0.25 0.02 250);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --border: oklch(0.91 0.005 80);
+  --input: oklch(0.91 0.005 80);
+  --ring: oklch(0.65 0.06 75);
+  /* Amber brand */
+  --amber-brand: oklch(0.75 0.16 75);
+  --amber-brand-foreground: oklch(0.20 0.04 75);
+  /* Charts */
+  --chart-1: oklch(0.75 0.16 75);
+  --chart-2: oklch(0.55 0.08 250);
+  --chart-3: oklch(0.65 0.12 145);
+  --chart-4: oklch(0.60 0.15 30);
+  --chart-5: oklch(0.55 0.12 290);
+  --radius: 0.5rem;
+  /* Sidebar — darker slate */
+  --sidebar: oklch(0.18 0.02 255);
+  --sidebar-foreground: oklch(0.92 0.005 80);
+  --sidebar-primary: oklch(0.75 0.16 75);
+  --sidebar-primary-foreground: oklch(0.15 0.02 75);
+  --sidebar-accent: oklch(0.24 0.02 255);
+  --sidebar-accent-foreground: oklch(0.92 0.005 80);
+  --sidebar-border: oklch(0.28 0.015 255);
+  --sidebar-ring: oklch(0.75 0.16 75);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.13 0.015 255);
+  --foreground: oklch(0.93 0.005 80);
+  --card: oklch(0.17 0.015 255);
+  --card-foreground: oklch(0.93 0.005 80);
+  --popover: oklch(0.17 0.015 255);
+  --popover-foreground: oklch(0.93 0.005 80);
+  --primary: oklch(0.75 0.16 75);
+  --primary-foreground: oklch(0.15 0.02 75);
+  --secondary: oklch(0.22 0.015 255);
+  --secondary-foreground: oklch(0.93 0.005 80);
+  --muted: oklch(0.22 0.015 255);
+  --muted-foreground: oklch(0.65 0.01 255);
+  --accent: oklch(0.22 0.02 255);
+  --accent-foreground: oklch(0.93 0.005 80);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --border: oklch(0.26 0.015 255);
+  --input: oklch(0.26 0.015 255);
+  --ring: oklch(0.75 0.16 75);
+  --amber-brand: oklch(0.75 0.16 75);
+  --amber-brand-foreground: oklch(0.15 0.02 75);
+  --chart-1: oklch(0.75 0.16 75);
+  --chart-2: oklch(0.55 0.08 250);
+  --chart-3: oklch(0.65 0.12 145);
+  --chart-4: oklch(0.60 0.15 30);
+  --chart-5: oklch(0.55 0.12 290);
+  --sidebar: oklch(0.12 0.015 255);
+  --sidebar-foreground: oklch(0.92 0.005 80);
+  --sidebar-primary: oklch(0.75 0.16 75);
+  --sidebar-primary-foreground: oklch(0.15 0.02 75);
+  --sidebar-accent: oklch(0.18 0.015 255);
+  --sidebar-accent-foreground: oklch(0.92 0.005 80);
+  --sidebar-border: oklch(0.22 0.012 255);
+  --sidebar-ring: oklch(0.75 0.16 75);
 }
 
 @layer base {
@@ -144,8 +135,172 @@
   }
   body {
     @apply bg-background text-foreground;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    overscroll-behavior-y: contain;
   }
   html {
-    @apply font-sans;
+    @apply font-sans antialiased;
+    -webkit-text-size-adjust: 100%;
   }
+  /* Heading font */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+  /* Minimum 44px touch targets on primary interactive elements */
+  button, [role="button"], select, [type="checkbox"], [type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  /* Exceptions: icon buttons, small elements, inline links, breadcrumbs */
+  button[class*="size-icon"], [class*="h-6"], [class*="h-7"],
+  [data-slot="breadcrumb-link"], [data-slot="breadcrumb-separator"],
+  [data-slot="breadcrumb-page"], [data-slot="sidebar-menu-badge"],
+  nav a, .inline-link {
+    min-height: unset;
+    min-width: unset;
+  }
+  @media (max-width: 640px) {
+    td, th {
+      padding-top: 0.625rem;
+      padding-bottom: 0.625rem;
+    }
+  }
+}
+
+/* ─── Topographic background pattern ─────────────────────────────────── */
+.bg-topo {
+  background-image: url("data:image/svg+xml,%3Csvg width='600' height='600' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M300 50c80 0 150 40 190 100s50 130 30 200-70 130-140 160-150 20-220-10-120-90-140-160-10-140 30-200S220 50 300 50z' fill='none' stroke='%23d4a574' stroke-width='0.5' opacity='0.08'/%3E%3Cpath d='M300 100c60 0 110 30 140 75s40 95 22 150-52 98-105 120-112 15-165-8-90-68-105-120-7-105 22-150S240 100 300 100z' fill='none' stroke='%23d4a574' stroke-width='0.5' opacity='0.06'/%3E%3Cpath d='M300 150c42 0 78 21 99 53s28 68 16 106-37 69-74 85-79 10-117-6-64-48-74-85-5-74 16-106S258 150 300 150z' fill='none' stroke='%23d4a574' stroke-width='0.5' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 600px 600px;
+}
+
+/* ─── Subtle grain texture overlay ───────────────────────────────────── */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* ─── Skeleton shimmer ───────────────────────────────────────────────── */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--muted) 35%,
+    oklch(0.92 0.005 80) 50%,
+    var(--muted) 65%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* ─── Page / content fade-in ─────────────────────────────────────────── */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out both;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+/* ─── Tab content transition ─────────────────────────────────────────── */
+[data-slot="tabs-content"][data-state="active"] {
+  animation: tab-enter 0.25s ease-out both;
+}
+@keyframes tab-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Route loading bar ──────────────────────────────────────────────── */
+@keyframes loading-bar {
+  0% {
+    width: 0%;
+    left: 0;
+  }
+  50% {
+    width: 60%;
+    left: 10%;
+  }
+  100% {
+    width: 0%;
+    left: 100%;
+  }
+}
+.route-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--amber-brand);
+  z-index: 9999;
+  animation: loading-bar 1.2s ease-in-out infinite;
+  border-radius: 0 1px 1px 0;
+}
+
+/* ─── Global interactive polish ─────────────────────────────────────── */
+
+/* Smooth focus rings on all focusable elements */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  transition: outline-offset 0.15s ease;
+}
+
+/* Cards get smooth shadow transitions */
+[data-slot="card"] {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Clickable table rows */
+tr[class*="cursor-pointer"] {
+  transition: background-color 0.15s ease;
+}
+tr[class*="cursor-pointer"]:hover {
+  background-color: var(--accent);
+}
+
+/* Smooth badge transitions */
+[data-slot="badge"] {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* Button hover micro-interaction */
+[data-slot="button"]:not(:disabled):active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
 }

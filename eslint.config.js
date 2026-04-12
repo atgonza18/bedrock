@@ -77,4 +77,14 @@ export default defineConfig([
     },
   },
   ...convexPlugin.configs.recommended,
+  // TanStack Router file-based routes must co-export `Route` and a
+  // component from the same file. shadcn/ui primitives co-export
+  // variant maps (cva). Both legitimately break the fast-refresh
+  // "only-components" heuristic.
+  {
+    files: ["src/routes/**/*.{ts,tsx}", "src/components/ui/**/*.{ts,tsx}"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
 ]);
