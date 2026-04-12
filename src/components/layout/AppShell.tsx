@@ -82,17 +82,21 @@ function AppSidebar() {
     (me.membership.role === "pm" || me.membership.role === "admin");
   const isClientRole = me?.state === "ok" && me.membership.role === "client";
 
+  // Only run queries when user is fully onboarded (state === "ok").
+  // Without this guard, queries fire before the profile exists and throw NO_PROFILE.
+  const isReady = me?.state === "ok";
+
   // Get queue count for badge (pm/admin only)
   const queue = useQuery(
     api.reports.queries.listReviewQueue,
-    isPmOrAdmin ? {} : "skip",
+    isReady && isPmOrAdmin ? {} : "skip",
   );
   const queueCount = Array.isArray(queue) ? queue.length : 0;
 
   // Get rejected count for "My Reports" badge (internal users only)
   const myDrafts = useQuery(
     api.reports.queries.listMyDrafts,
-    !isClientRole ? {} : "skip",
+    isReady && !isClientRole ? {} : "skip",
   );
   const rejectedCount = Array.isArray(myDrafts)
     ? myDrafts.filter((r) => r.status === "rejected").length
