@@ -241,9 +241,11 @@ function InvitationsSection() {
 
 function InviteDialogContent({ onSuccess }: { onSuccess: () => void }) {
   const create = useMutation(api.invitations.create);
+  const clients = useQuery(api.clients.list);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("tech");
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
   return (
@@ -282,6 +284,7 @@ function InviteDialogContent({ onSuccess }: { onSuccess: () => void }) {
             fullName,
             email,
             role: selectedRole as "admin" | "pm" | "tech" | "client",
+            clientId: selectedRole === "client" && selectedClientId ? selectedClientId as any : undefined,
           })
             .then(() => onSuccess())
             .finally(() => setSubmitting(false));
@@ -310,7 +313,7 @@ function InviteDialogContent({ onSuccess }: { onSuccess: () => void }) {
         </div>
         <div className="space-y-2">
           <Label>Role</Label>
-          <Select value={selectedRole} onValueChange={setSelectedRole}>
+          <Select value={selectedRole} onValueChange={(v) => { setSelectedRole(v); if (v !== "client") setSelectedClientId(""); }}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -322,6 +325,26 @@ function InviteDialogContent({ onSuccess }: { onSuccess: () => void }) {
             </SelectContent>
           </Select>
         </div>
+        {selectedRole === "client" && (
+          <div className="space-y-2">
+            <Label>Client company</Label>
+            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select company..." />
+              </SelectTrigger>
+              <SelectContent>
+                {clients?.map((c) => (
+                  <SelectItem key={c._id} value={c._id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              This links the user to the right projects and reports.
+            </p>
+          </div>
+        )}
       </form>
 
       {/* Footer */}
