@@ -64,24 +64,16 @@ const styles = StyleSheet.create({
   // Divider
   divider: { borderBottom: "0.5 solid #e0e0e0", marginVertical: 10 },
 
-  // Pass/fail badges
-  passBadge: {
-    fontSize: 7,
+  // Pass/fail in table
+  passCell: {
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
     color: "#16a34a",
-    backgroundColor: "#f0fdf4",
-    borderRadius: 2,
-    paddingVertical: 1,
-    paddingHorizontal: 3,
   },
-  failBadge: {
-    fontSize: 7,
+  failCell: {
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
     color: "#dc2626",
-    backgroundColor: "#fef2f2",
-    borderRadius: 2,
-    paddingVertical: 1,
-    paddingHorizontal: 3,
   },
 
   // Spec reference box
@@ -351,36 +343,15 @@ export function NuclearDensityContent({
             <Text style={styles.sectionHeader}>Density Readings</Text>
             <View style={styles.tableContainer}>
               <View style={styles.tableHeaderRow}>
-                <Text style={[styles.tableHeaderCell, { width: 35 }]}>
-                  Test #
-                </Text>
-                <Text style={[styles.tableHeaderCell, { width: 50 }]}>
-                  Station
-                </Text>
-                <Text style={[styles.tableHeaderCell, { width: 35 }]}>
-                  Offset
-                </Text>
-                <Text style={[styles.tableHeaderCell, { width: 40 }]}>
-                  Elev.
-                </Text>
-                <Text style={[styles.tableHeaderCell, { width: 35 }]}>
-                  Depth
-                </Text>
-                <Text style={[styles.tableHeaderCell, { width: 45 }]}>
-                  Wet Dens.
-                </Text>
-                <Text style={[styles.tableHeaderCell, { width: 40 }]}>
-                  Moist. %
-                </Text>
-                <Text style={[styles.tableHeaderCell, { width: 45 }]}>
-                  Dry Dens.
-                </Text>
-                <Text style={[styles.tableHeaderCell, { width: 45 }]}>
-                  Comp. %
-                </Text>
-                <Text style={[styles.tableHeaderCell, { flex: 1 }]}>
-                  Result
-                </Text>
+                <Text style={[styles.tableHeaderCell, { width: 35 }]}>Test #</Text>
+                <Text style={[styles.tableHeaderCell, { width: 55 }]}>Station</Text>
+                <Text style={[styles.tableHeaderCell, { width: 35 }]}>Depth</Text>
+                <Text style={[styles.tableHeaderCell, { width: 50 }]}>Wet Dens.</Text>
+                <Text style={[styles.tableHeaderCell, { width: 40 }]}>Moist %</Text>
+                <Text style={[styles.tableHeaderCell, { width: 50 }]}>Dry Dens.</Text>
+                <Text style={[styles.tableHeaderCell, { width: 50 }]}>Max Dry</Text>
+                <Text style={[styles.tableHeaderCell, { width: 45 }]}>Comp %</Text>
+                <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Result</Text>
               </View>
               {densityReadings.map((reading, i) => {
                 const pf = reading.passed === true ? "PASS" : reading.passed === false ? "FAIL" : undefined;
@@ -391,43 +362,15 @@ export function NuclearDensityContent({
                     key={i}
                     style={i % 2 === 1 ? styles.tableRowAlt : styles.tableRow}
                   >
-                    <Text style={[styles.tableCell, { width: 35 }]}>
-                      {reading.testNumber ?? i + 1}
-                    </Text>
-                    <Text style={[styles.tableCell, { width: 50 }]}>
-                      {reading.station ?? "\u2014"}
-                    </Text>
-                    <Text style={[styles.tableCell, { width: 35 }]}>
-                      {reading.offset ?? "\u2014"}
-                    </Text>
-                    <Text style={[styles.tableCell, { width: 40 }]}>
-                      {reading.elevation ?? "\u2014"}
-                    </Text>
-                    <Text style={[styles.tableCell, { width: 35 }]}>
-                      {reading.depthInches ?? "\u2014"}
-                    </Text>
-                    <Text style={[styles.tableCell, { width: 45 }]}>
-                      {reading.wetDensityPcf ?? "\u2014"}
-                    </Text>
-                    <Text style={[styles.tableCell, { width: 40 }]}>
-                      {reading.moisturePct ?? "\u2014"}
-                    </Text>
-                    <Text style={[styles.tableCell, { width: 45 }]}>
-                      {reading.dryDensityPcf ?? "\u2014"}
-                    </Text>
-                    <Text style={[styles.tableCell, { width: 45 }]}>
-                      {reading.compactionPct ?? "\u2014"}
-                    </Text>
-                    <Text
-                      style={[
-                        isPass
-                          ? styles.passBadge
-                          : isFail
-                            ? styles.failBadge
-                            : styles.tableCell,
-                        { flex: 1 },
-                      ]}
-                    >
+                    <Text style={[styles.tableCell, { width: 35 }]}>{reading.testNumber ?? i + 1}</Text>
+                    <Text style={[styles.tableCell, { width: 55 }]}>{reading.station ?? "\u2014"}</Text>
+                    <Text style={[styles.tableCell, { width: 35 }]}>{reading.depthInches ?? "\u2014"}</Text>
+                    <Text style={[styles.tableCell, { width: 50 }]}>{reading.wetDensityPcf ?? "\u2014"}</Text>
+                    <Text style={[styles.tableCell, { width: 40 }]}>{reading.moisturePct ?? "\u2014"}</Text>
+                    <Text style={[styles.tableCell, { width: 50 }]}>{reading.dryDensityPcf ?? "\u2014"}</Text>
+                    <Text style={[styles.tableCell, { width: 50 }]}>{reading.maxDryDensityPcf ?? "\u2014"}</Text>
+                    <Text style={[styles.tableCell, { width: 45 }]}>{reading.compactionPct ?? "\u2014"}</Text>
+                    <Text style={[isPass ? styles.passCell : isFail ? styles.failCell : styles.tableCell, { flex: 1 }]}>
                       {pf ?? "\u2014"}
                     </Text>
                   </View>
