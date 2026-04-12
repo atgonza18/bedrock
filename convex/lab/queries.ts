@@ -1,6 +1,5 @@
-import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { requireInternal, requireRole, orgScoped } from "../lib/auth";
+import { requireInternal } from "../lib/auth";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -21,7 +20,6 @@ export const listBreakQueue = query({
 
     const activeSets = sets.filter((s) => s.status !== "complete");
 
-    const now = Date.now();
     const todayStart = new Date().setHours(0, 0, 0, 0);
     const todayEnd = todayStart + DAY_MS;
     const weekEnd = todayStart + 7 * DAY_MS;

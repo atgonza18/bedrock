@@ -10,7 +10,6 @@ import {
   MailCheck,
   Globe,
   Clock,
-  User,
   Timer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

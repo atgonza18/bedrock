@@ -152,7 +152,6 @@ export function ReportDocument({
   signatureUrl,
   approverName,
   approvedAt,
-  portalUrl,
   specZoneName,
   logoUrl,
   photoUrls,

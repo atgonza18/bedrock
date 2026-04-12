@@ -661,7 +661,7 @@ function ZoneFormDialog({
       specMinCompactionPct: minCompaction ? Number(minCompaction) : undefined,
       specProctorType:
         proctorType === "standard" || proctorType === "modified"
-          ? proctorType
+          ? proctorType as "standard" | "modified"
           : undefined,
       referencedProctorId: proctorId
         ? (proctorId as Id<"proctorCurves">)

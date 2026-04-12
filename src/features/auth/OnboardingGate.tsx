@@ -126,10 +126,7 @@ function BootstrapForm() {
 function ClaimInviteCard({
   invitation,
 }: {
-  invitation: Extract<
-    Awaited<ReturnType<typeof api.onboarding.getPendingInvitation._returnType>>,
-    { kind: "pending" }
-  >;
+  invitation: any;
 }) {
   const claimInvitation = useMutation(api.onboarding.claimInvitation);
   const [submitting, setSubmitting] = useState(false);

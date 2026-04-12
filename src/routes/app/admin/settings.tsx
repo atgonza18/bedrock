@@ -63,7 +63,6 @@ function AdminSettingsPage() {
 
 function LogoSection({
   logoUrl,
-  logoStorageId,
 }: {
   logoUrl: string | null;
   logoStorageId: Id<"_storage"> | null | undefined;

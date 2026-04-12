@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSetBreadcrumbs } from "@/components/layout/breadcrumb-context";
-import { FolderKanban, MapPin, ChevronRight } from "lucide-react";
+import { FolderKanban, MapPin } from "lucide-react";
 import { PageTransition } from "@/components/layout/PageTransition";
 
 export const Route = createFileRoute("/app/projects/")({

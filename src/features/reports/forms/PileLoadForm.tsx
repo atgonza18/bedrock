@@ -27,9 +27,9 @@ const schema = z.object({
   blockNumber: z.string().optional(),
   rowNumber: z.string().optional(),
   pileNumber: z.string().optional(),
-  installedLength: z.coerce.number().optional(),
-  designLoadKips: z.coerce.number().optional(),
-  maxLoadKips: z.coerce.number().optional(),
+  installedLength: z.number().optional(),
+  designLoadKips: z.number().optional(),
+  maxLoadKips: z.number().optional(),
   failureCriterionNotes: z.string().optional(),
   result: z.enum(["pass", "fail", "inconclusive"]).optional(),
   // Report-level
@@ -38,9 +38,9 @@ const schema = z.object({
   stationFrom: z.string().optional(),
   stationTo: z.string().optional(),
   weather: z.object({
-    tempF: z.coerce.number().optional(),
+    tempF: z.number().optional(),
     conditions: z.string().optional(),
-    windMph: z.coerce.number().optional(),
+    windMph: z.number().optional(),
   }).optional(),
 });
 

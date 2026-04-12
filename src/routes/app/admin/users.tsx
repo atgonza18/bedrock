@@ -60,7 +60,7 @@ function MembersSection() {
 
   const currentUserId = me?.state === "ok" ? me.membership.userId : null;
 
-  const handleRoleChange = (membershipId: typeof members extends (infer T)[] ? T extends { membership: { _id: infer I } } ? I : never : never, newRole: string) => {
+  const handleRoleChange = (membershipId: any, newRole: string) => {
     void updateRole({
       membershipId: membershipId as any,
       role: newRole as "admin" | "pm" | "tech" | "client",

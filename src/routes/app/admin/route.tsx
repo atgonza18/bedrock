@@ -1,7 +1,6 @@
 import { Navigate, Outlet, createFileRoute, Link } from "@tanstack/react-router";
 import { useCurrentMember } from "@/features/auth/useCurrentMember";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSetBreadcrumbs } from "@/components/layout/breadcrumb-context";
 import { Users, Building2, FolderCog, Layers, Wrench, Award, Settings } from "lucide-react";
 

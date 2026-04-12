@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -213,7 +213,7 @@ function ReportDetailPage() {
   const formElement = (() => {
     switch (report.kind) {
       case "concrete_field":
-        return <ConcreteFieldForm key={report._id} reportId={report._id} report={report} detail={detail} readOnly={!isEditable} />;
+        return <ConcreteFieldForm key={report._id} reportId={report._id} report={report} detail={detail as any} readOnly={!isEditable} />;
       case "nuclear_density":
         return <NuclearDensityForm key={report._id} reportId={report._id} report={report} detail={detail} readOnly={!isEditable} onProctorChange={setProctorValues} />;
       case "proof_roll":

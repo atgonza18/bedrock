@@ -20,17 +20,17 @@ const dcpSchema = z.object({
   fieldDate: z.string().optional(),
   weather: z
     .object({
-      tempF: z.coerce.number().optional(),
+      tempF: z.number().optional(),
       conditions: z.string().optional(),
-      windMph: z.coerce.number().optional(),
+      windMph: z.number().optional(),
     })
     .optional(),
   locationNote: z.string().optional(),
   stationFrom: z.string().optional(),
   stationTo: z.string().optional(),
   testLocation: z.string().optional(),
-  groundwaterDepthIn: z.coerce.number().optional(),
-  hammerWeightLbs: z.coerce.number().optional(),
+  groundwaterDepthIn: z.number().optional(),
+  hammerWeightLbs: z.number().optional(),
 });
 
 type DcpFormValues = z.infer<typeof dcpSchema>;

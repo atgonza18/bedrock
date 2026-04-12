@@ -1,6 +1,5 @@
 "use node";
 
-import React from "react";
 import { View, Text, StyleSheet } from "@react-pdf/renderer";
 
 const ACCENT = "#c89340";

@@ -11,9 +11,9 @@ export const concreteFieldSchema = z.object({
   fieldDate: z.string().optional(),
   weather: z
     .object({
-      tempF: z.coerce.number().optional(),
+      tempF: z.number().optional(),
       conditions: z.string().optional(),
-      windMph: z.coerce.number().optional(),
+      windMph: z.number().optional(),
     })
     .optional(),
   locationNote: z.string().optional(),
@@ -22,18 +22,18 @@ export const concreteFieldSchema = z.object({
 
   // Concrete detail fields
   mixDesignNumber: z.string().optional(),
-  designStrengthPsi: z.coerce.number().optional(),
+  designStrengthPsi: z.number().optional(),
   supplier: z.string().optional(),
   ticketNumber: z.string().optional(),
   truckNumber: z.string().optional(),
-  cubicYards: z.coerce.number().optional(),
+  cubicYards: z.number().optional(),
   placementLocation: z.string().optional(),
-  slumpInches: z.coerce.number().optional(),
-  airContentPct: z.coerce.number().optional(),
+  slumpInches: z.number().optional(),
+  airContentPct: z.number().optional(),
   airMethod: z.enum(["pressure", "volumetric"]).optional(),
-  concreteTempF: z.coerce.number().optional(),
-  ambientTempF: z.coerce.number().optional(),
-  unitWeightPcf: z.coerce.number().optional(),
+  concreteTempF: z.number().optional(),
+  ambientTempF: z.number().optional(),
+  unitWeightPcf: z.number().optional(),
   admixtureNotes: z.string().optional(),
 });
 

@@ -21,16 +21,16 @@ const proofRollSchema = z.object({
   fieldDate: z.string().optional(),
   weather: z
     .object({
-      tempF: z.coerce.number().optional(),
+      tempF: z.number().optional(),
       conditions: z.string().optional(),
-      windMph: z.coerce.number().optional(),
+      windMph: z.number().optional(),
     })
     .optional(),
   locationNote: z.string().optional(),
   stationFrom: z.string().optional(),
   stationTo: z.string().optional(),
   equipmentUsed: z.string().optional(),
-  numberOfPasses: z.coerce.number().optional(),
+  numberOfPasses: z.number().optional(),
   areaDescription: z.string().optional(),
   result: z.enum(["pass", "fail", "conditional"]).optional(),
   failureZones: z.string().optional(),

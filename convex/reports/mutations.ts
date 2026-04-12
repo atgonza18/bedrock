@@ -2,7 +2,7 @@ import { v, ConvexError } from "convex/values";
 import { mutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { Id } from "../_generated/dataModel";
-import { requireMember, requireRole, requireInternal, requireProjectAccess, requireOwnership, orgScoped } from "../lib/auth";
+import { requireRole, requireInternal, requireProjectAccess, requireOwnership, orgScoped } from "../lib/auth";
 import { reportKind } from "../schema";
 import { assertTransition } from "./transitions";
 import { nextReportNumber } from "./numbers";

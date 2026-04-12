@@ -20,9 +20,9 @@ const nuclearDensitySchema = z.object({
   fieldDate: z.string().optional(),
   weather: z
     .object({
-      tempF: z.coerce.number().optional(),
+      tempF: z.number().optional(),
       conditions: z.string().optional(),
-      windMph: z.coerce.number().optional(),
+      windMph: z.number().optional(),
     })
     .optional(),
   locationNote: z.string().optional(),
@@ -31,7 +31,7 @@ const nuclearDensitySchema = z.object({
   gaugeModel: z.string().optional(),
   gaugeSerialNumber: z.string().optional(),
   materialDescription: z.string().optional(),
-  liftNumber: z.coerce.number().optional(),
+  liftNumber: z.number().optional(),
 });
 
 type NuclearDensityFormValues = z.infer<typeof nuclearDensitySchema>;
