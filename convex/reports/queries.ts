@@ -392,8 +392,12 @@ export const listForClient = query({
   args: {},
   handler: async (ctx) => {
     const member = await requireMember(ctx);
-    if (member.membership.role !== "client" || !member.membership.clientId) {
+    if (member.membership.role !== "client") {
       throw new ConvexError({ code: "FORBIDDEN" });
+    }
+    // clientId may not be set if the invitation didn't specify a company.
+    if (!member.membership.clientId) {
+      return [];
     }
 
     const clientId = member.membership.clientId;

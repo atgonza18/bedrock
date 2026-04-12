@@ -19,12 +19,17 @@ export const Route = createFileRoute("/app/client/")({
 function ClientDashboard() {
   const me = useCurrentMember();
 
+  const isClient = me?.state === "ok" && me.membership.role === "client";
+
   // Only client role users should see this page.
-  if (me?.state === "ok" && me.membership.role !== "client") {
+  if (me?.state === "ok" && !isClient) {
     return <Navigate to="/app" replace />;
   }
 
-  const reports = useQuery(api.reports.queries.listForClient);
+  const reports = useQuery(
+    api.reports.queries.listForClient,
+    isClient ? {} : "skip",
+  );
 
   useSetBreadcrumbs([{ label: "Your Reports" }]);
 
