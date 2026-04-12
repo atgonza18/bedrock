@@ -51,9 +51,11 @@ type Props = {
   report: Doc<"reports">;
   detail: Record<string, any> | null;
   readOnly?: boolean;
+  /** Slot for the load increments editor, rendered between Pile ID and Test Config. */
+  incrementEditor?: React.ReactNode;
 };
 
-export function PileLoadForm({ reportId, report, detail, readOnly }: Props) {
+export function PileLoadForm({ reportId, report, detail, readOnly, incrementEditor }: Props) {
   const updateDraft = useMutation(api.reports.mutations.updateDraft);
   const zones = useQuery(api.specZones.listByProject, { projectId: report.projectId });
   const pileTypes = useQuery(api.pileTypes.listByProject, { projectId: report.projectId });
@@ -300,6 +302,14 @@ export function PileLoadForm({ reportId, report, detail, readOnly }: Props) {
           <Input {...form.register("installedLength")} inputMode="decimal" placeholder="0.0" />
         </Field>
       </section>
+
+      {/* Load Increments editor — injected from parent */}
+      {incrementEditor && (
+        <>
+          <div className="border-t-2 border-muted pt-2" />
+          {incrementEditor}
+        </>
+      )}
 
       <div className="border-t-2 border-muted pt-2" />
 

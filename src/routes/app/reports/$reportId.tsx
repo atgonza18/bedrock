@@ -221,7 +221,7 @@ function ReportDetailPage() {
       case "dcp":
         return <DcpForm key={report._id} reportId={report._id} report={report} detail={detail} readOnly={!isEditable} />;
       case "pile_load":
-        return <PileLoadForm key={report._id} reportId={report._id} report={report} detail={detail} readOnly={!isEditable} />;
+        return <PileLoadForm key={report._id} reportId={report._id} report={report} detail={detail} readOnly={!isEditable} incrementEditor={<PileLoadIncrementEditor reportId={report._id} increments={data.pileLoadIncrements} readOnly={!isEditable} />} />;
       default:
         return null;
     }
@@ -236,7 +236,7 @@ function ReportDetailPage() {
       case "dcp":
         return <DcpLayersEditor reportId={report._id} layers={data.dcpLayers} readOnly={!isEditable} />;
       case "pile_load":
-        return <PileLoadIncrementEditor reportId={report._id} increments={data.pileLoadIncrements} readOnly={!isEditable} />;
+        return null; // Embedded directly in PileLoadForm via incrementEditor prop
       default:
         return null;
     }
