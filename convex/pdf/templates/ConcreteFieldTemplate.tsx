@@ -1,6 +1,6 @@
 "use node";
 
-import { View, Text, StyleSheet } from "@react-pdf/renderer";
+import { View, Text, Svg, Line, Rect, StyleSheet } from "@react-pdf/renderer";
 
 const ACCENT = "#c89340";
 
@@ -156,6 +156,175 @@ function FieldFull({ label, value }: { label: string; value: any }) {
   );
 }
 
+function CylinderStrengthChart({
+  cylinderSets,
+  specStrength,
+}: {
+  cylinderSets: CylinderData[];
+  specStrength?: number;
+}) {
+  const bars: { label: string; strength: number }[] = [];
+  for (const set of cylinderSets) {
+    for (const c of set.cylinders) {
+      if (c.strengthPsi != null) {
+        bars.push({
+          label: `${set.setLabel} / #${c.cylinderNumber} (${c.breakAgeDays}d)`,
+          strength: c.strengthPsi,
+        });
+      }
+    }
+  }
+  if (bars.length === 0) return null;
+
+  const LABEL_W = 110;
+  const CHART_W = 270;
+  const BAR_H = 14;
+  const BAR_GAP = 4;
+  const PAD_T = 6;
+  const PAD_B = 4;
+  const H = PAD_T + bars.length * (BAR_H + BAR_GAP) + PAD_B;
+  const maxVal = Math.max(...bars.map((b) => b.strength), specStrength ?? 0, 1);
+  const ceil = Math.ceil(maxVal / 1000) * 1000;
+
+  const scaleX = (v: number) => (v / ceil) * CHART_W;
+
+  const tickFracs = [0, 0.25, 0.5, 0.75, 1];
+
+  return (
+    <View style={{ marginTop: 10 }}>
+      <Text style={styles.sectionHeader}>Cylinder Break Strength</Text>
+
+      <View style={{ flexDirection: "row" }}>
+        {/* Y-axis labels */}
+        <View style={{ width: LABEL_W, paddingTop: PAD_T }}>
+          {bars.map((b, i) => (
+            <View
+              key={i}
+              style={{
+                height: BAR_H + BAR_GAP,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ fontSize: 6, color: "#666" }}>{b.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* SVG chart area */}
+        <Svg width={CHART_W} height={H} viewBox={`0 0 ${CHART_W} ${H}`}>
+          {/* Vertical grid lines */}
+          {tickFracs.map((frac, idx) => {
+            const x = scaleX(frac * ceil);
+            return (
+              <Line
+                key={idx}
+                x1={x}
+                y1={0}
+                x2={x}
+                y2={H}
+                stroke="#e5e5e5"
+                strokeWidth={0.5}
+              />
+            );
+          })}
+
+          {/* Spec requirement line */}
+          {specStrength != null && specStrength > 0 && (
+            <Line
+              x1={scaleX(specStrength)}
+              y1={0}
+              x2={scaleX(specStrength)}
+              y2={H}
+              stroke="#dc2626"
+              strokeWidth={0.75}
+              strokeDasharray="4,3"
+            />
+          )}
+
+          {/* Data bars */}
+          {bars.map((b, i) => {
+            const y = PAD_T + i * (BAR_H + BAR_GAP);
+            const barW = Math.max(scaleX(b.strength), 1);
+            const meetsSpec = !specStrength || b.strength >= specStrength;
+            return (
+              <Rect
+                key={i}
+                x={0}
+                y={y}
+                width={barW}
+                height={BAR_H}
+                fill={meetsSpec ? ACCENT : "#dc2626"}
+                rx={2}
+              />
+            );
+          })}
+        </Svg>
+      </View>
+
+      {/* X-axis tick labels */}
+      <View
+        style={{
+          flexDirection: "row",
+          marginLeft: LABEL_W,
+          width: CHART_W,
+          justifyContent: "space-between",
+          marginTop: 1,
+        }}
+      >
+        <Text style={{ fontSize: 6, color: "#888" }}>0</Text>
+        <Text style={{ fontSize: 6, color: "#888" }}>
+          {Math.round(ceil * 0.25)}
+        </Text>
+        <Text style={{ fontSize: 6, color: "#888" }}>
+          {Math.round(ceil * 0.5)}
+        </Text>
+        <Text style={{ fontSize: 6, color: "#888" }}>
+          {Math.round(ceil * 0.75)}
+        </Text>
+        <Text style={{ fontSize: 6, color: "#888" }}>{ceil} psi</Text>
+      </View>
+
+      {/* Legend */}
+      <View style={{ flexDirection: "row", marginTop: 6, marginLeft: LABEL_W }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginRight: 14 }}>
+          <Svg width={10} height={8} viewBox="0 0 10 8">
+            <Rect x={0} y={0} width={10} height={8} fill={ACCENT} rx={1} />
+          </Svg>
+          <Text style={{ fontSize: 6, color: "#666", marginLeft: 3 }}>
+            Meets Spec
+          </Text>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", marginRight: 14 }}>
+          <Svg width={10} height={8} viewBox="0 0 10 8">
+            <Rect x={0} y={0} width={10} height={8} fill="#dc2626" rx={1} />
+          </Svg>
+          <Text style={{ fontSize: 6, color: "#666", marginLeft: 3 }}>
+            Below Spec
+          </Text>
+        </View>
+        {specStrength != null && specStrength > 0 && (
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Svg width={14} height={8} viewBox="0 0 14 8">
+              <Line
+                x1={7}
+                y1={0}
+                x2={7}
+                y2={8}
+                stroke="#dc2626"
+                strokeWidth={0.75}
+                strokeDasharray="2,1"
+              />
+            </Svg>
+            <Text style={{ fontSize: 6, color: "#666", marginLeft: 3 }}>
+              Spec Min ({specStrength} psi)
+            </Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
 export function ConcreteFieldContent({
   detail,
   weather,
@@ -276,6 +445,12 @@ export function ConcreteFieldContent({
           </View>
         </>
       )}
+
+      {/* Cylinder Strength Chart */}
+      <CylinderStrengthChart
+        cylinderSets={cylinderSets}
+        specStrength={specZone?.specMinConcreteStrengthPsi}
+      />
     </View>
   );
 }
