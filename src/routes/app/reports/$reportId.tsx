@@ -248,11 +248,9 @@ function ReportDetailPage() {
         label: "Test Data",
         content: <Card><CardContent className="pt-6">{formElement}</CardContent></Card>,
       },
-      {
-        label: "Photos",
-        content: <PhotoCapture reportId={report._id} attachments={attachments} readOnly={!isEditable} />,
-      },
     ];
+    // Child data (increments, readings, layers, cylinders) comes right after the form —
+    // this is the core test data, not supplementary like photos.
     if (childElement) {
       const childLabel =
         report.kind === "concrete_field" ? "Cylinders" :
@@ -261,6 +259,10 @@ function ReportDetailPage() {
         report.kind === "pile_load" ? "Load Increments" : "Details";
       steps.push({ label: childLabel, content: childElement });
     }
+    steps.push({
+      label: "Photos",
+      content: <PhotoCapture reportId={report._id} attachments={attachments} readOnly={!isEditable} />,
+    });
     return steps;
   };
 
