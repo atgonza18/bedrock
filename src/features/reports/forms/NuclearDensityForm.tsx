@@ -325,18 +325,6 @@ export function NuclearDensityForm({ reportId, report, detail, readOnly, onProct
         </div>
       </section>
 
-      <div className="border-t-2 border-muted pt-2" />
-
-      {/* Section 4: Density Readings */}
-      <section className="space-y-4">
-        <h3 className="font-heading text-sm font-semibold text-foreground">
-          Density Readings
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Add individual test readings using the editor below.
-        </p>
-      </section>
-
       {/* Zone spec reference */}
       {selectedZone?.specMinCompactionPct && (
         <div className="space-y-2">

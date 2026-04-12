@@ -290,18 +290,6 @@ export function DcpForm({ reportId, report, detail, readOnly }: Props) {
         </div>
       </section>
 
-      <div className="border-t-2 border-muted pt-2" />
-
-      {/* Section 4: DCP Layers */}
-      <section className="space-y-4">
-        <h3 className="font-heading text-sm font-semibold text-foreground">
-          DCP Layers
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Record penetration data layer by layer using the editor below.
-        </p>
-      </section>
-
       {/* Zone context */}
       {selectedZone && (
         <div className="text-sm text-muted-foreground rounded-lg border px-4 py-2.5">

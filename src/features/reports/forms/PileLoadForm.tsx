@@ -348,21 +348,6 @@ export function PileLoadForm({ reportId, report, detail, readOnly }: Props) {
 
       <div className="border-t-2 border-muted pt-2" />
 
-      {/* Section 4: Load Increments */}
-      <section className="space-y-4">
-        <h3 className="font-heading text-sm font-semibold text-foreground">
-          Load Increments
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Record applied loads and settlements using the editor below.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Add load increments below using the increment editor.
-        </p>
-      </section>
-
-      <div className="border-t-2 border-muted pt-2" />
-
       {/* Section 5: Results */}
       <section className="space-y-4">
         <h3 className="font-heading text-sm font-semibold text-foreground">
