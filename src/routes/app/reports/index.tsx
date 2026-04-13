@@ -184,7 +184,7 @@ function MyReportsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-4">
           {filtered?.map((r) => {
             const displayDate = getDisplayDate(r);
             return (

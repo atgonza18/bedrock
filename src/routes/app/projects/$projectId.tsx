@@ -279,7 +279,7 @@ function ProjectDetailPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="flex flex-col gap-4">
               {(statusFilter === "all" ? reports : reports.filter(r => r.status === statusFilter)).length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
                   No reports match this filter.
