@@ -1,12 +1,12 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { requireRole, orgScoped } from "./lib/auth";
+import { requireMember, requireRole, orgScoped } from "./lib/auth";
 
 /** List all spec zones for a project, ordered by sortOrder. */
 export const listByProject = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, { projectId }) => {
-    const { org } = await requireRole(ctx, ["admin", "pm", "tech"]);
+    const { org } = await requireMember(ctx);
     orgScoped(org._id, await ctx.db.get("projects", projectId));
 
     const zones = await ctx.db
