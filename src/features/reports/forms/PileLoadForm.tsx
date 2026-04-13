@@ -303,23 +303,16 @@ export function PileLoadForm({ reportId, report, detail, readOnly, incrementEdit
         </Field>
       </section>
 
-      {/* Load Increments editor — injected from parent */}
-      {incrementEditor && (
-        <>
-          <div className="border-t-2 border-muted pt-2" />
-          {incrementEditor}
-        </>
-      )}
-
       <div className="border-t-2 border-muted pt-2" />
 
-      {/* Section 3: Test Configuration */}
+      {/* Section 3: Test Configuration — must come before increments so the tech
+          sets load direction first (it controls the increment labels). */}
       <section className="space-y-4">
         <h3 className="font-heading text-sm font-semibold text-foreground">
           Test Configuration
         </h3>
         <p className="text-sm text-muted-foreground">
-          How the test will be conducted.
+          Set these before recording increments — load direction determines the measurement labels.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Load direction" disabled={disabled}>
@@ -355,6 +348,14 @@ export function PileLoadForm({ reportId, report, detail, readOnly, incrementEdit
           <Input {...form.register("designLoadKips")} inputMode="decimal" placeholder="0" />
         </Field>
       </section>
+
+      {/* Load Increments editor — injected from parent */}
+      {incrementEditor && (
+        <>
+          <div className="border-t-2 border-muted pt-2" />
+          {incrementEditor}
+        </>
+      )}
 
       <div className="border-t-2 border-muted pt-2" />
 
