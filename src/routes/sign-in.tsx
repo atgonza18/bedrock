@@ -2,7 +2,7 @@ import { Navigate, createFileRoute } from "@tanstack/react-router";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SignInForm } from "@/features/auth/SignInForm";
-import { Mountain, FlaskConical, ClipboardCheck, Send } from "lucide-react";
+import { FlaskConical, ClipboardCheck, Send } from "lucide-react";
 
 export const Route = createFileRoute("/sign-in")({
   component: SignInPage,
@@ -20,12 +20,12 @@ function SignInPage() {
         <div className="relative z-10 flex flex-col justify-between p-10 xl:p-14 text-primary-foreground w-full">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center size-10 rounded-xl bg-white/15 backdrop-blur-sm">
-              <Mountain className="size-5" />
-            </div>
-            <span className="font-heading text-xl font-bold tracking-tight">
-              Bedrock
-            </span>
+            <img
+              src="/bedrock-logo.png"
+              srcSet="/bedrock-logo.png 1x, /bedrock-logo@2x.png 2x"
+              alt="Bedrock"
+              className="h-6 w-auto brightness-0 invert"
+            />
           </div>
 
           {/* Copy */}
@@ -69,12 +69,12 @@ function SignInPage() {
         <div className="relative w-full max-w-sm space-y-8">
           {/* Mobile logo */}
           <div className="flex flex-col items-center gap-3 lg:hidden">
-            <div className="flex items-center justify-center size-12 rounded-xl bg-primary text-primary-foreground">
-              <Mountain className="size-6" />
-            </div>
-            <span className="font-heading text-xl font-bold tracking-tight">
-              Bedrock
-            </span>
+            <img
+              src="/bedrock-logo.png"
+              srcSet="/bedrock-logo.png 1x, /bedrock-logo@2x.png 2x"
+              alt="Bedrock"
+              className="h-7 w-auto"
+            />
           </div>
 
           {/* Form card */}
