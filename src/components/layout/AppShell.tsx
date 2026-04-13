@@ -18,6 +18,8 @@ import {
   Settings,
   LogOut,
   ChevronsUpDown,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { useCurrentMember } from "@/features/auth/useCurrentMember";
 import {
@@ -36,6 +38,7 @@ import {
   SidebarProvider,
   SidebarSeparator,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -103,7 +106,7 @@ function AppSidebar() {
     : 0;
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -188,9 +191,34 @@ function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
+        <CollapseToggle />
         <UserMenu />
       </SidebarFooter>
     </Sidebar>
+  );
+}
+
+function CollapseToggle() {
+  const { toggleSidebar, state } = useSidebar();
+  const isCollapsed = state === "collapsed";
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          onClick={toggleSidebar}
+          tooltip="Toggle sidebar"
+          className="text-sidebar-foreground/50 hover:text-sidebar-foreground"
+        >
+          {isCollapsed ? (
+            <ChevronsRight className="size-4" />
+          ) : (
+            <ChevronsLeft className="size-4" />
+          )}
+          <span>{isCollapsed ? "Expand" : "Collapse"}</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
   );
 }
 
