@@ -222,7 +222,7 @@ function ReportDetailPage() {
       case "dcp":
         return <DcpForm key={report._id} reportId={report._id} report={report} detail={detail} readOnly={!isEditable} />;
       case "pile_load":
-        return <PileLoadForm key={report._id} reportId={report._id} report={report} detail={detail} readOnly={!isEditable} incrementEditor={<PileLoadIncrementEditor reportId={report._id} increments={data.pileLoadIncrements} readOnly={!isEditable} loadDirection={detail?.loadDirection} />} />;
+        return <PileLoadForm key={report._id} reportId={report._id} report={report} detail={detail} readOnly={!isEditable} renderIncrementEditor={(liveLoadDirection) => <PileLoadIncrementEditor reportId={report._id} increments={data.pileLoadIncrements} readOnly={!isEditable} loadDirection={liveLoadDirection} />} />;
       default:
         return null;
     }

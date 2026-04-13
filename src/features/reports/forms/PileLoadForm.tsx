@@ -51,11 +51,11 @@ type Props = {
   report: Doc<"reports">;
   detail: Record<string, any> | null;
   readOnly?: boolean;
-  /** Slot for the load increments editor, rendered between Pile ID and Test Config. */
-  incrementEditor?: React.ReactNode;
+  /** Render prop for the load increments editor — receives live loadDirection from form state. */
+  renderIncrementEditor?: (loadDirection: string | undefined) => React.ReactNode;
 };
 
-export function PileLoadForm({ reportId, report, detail, readOnly, incrementEditor }: Props) {
+export function PileLoadForm({ reportId, report, detail, readOnly, renderIncrementEditor }: Props) {
   const updateDraft = useMutation(api.reports.mutations.updateDraft);
   const zones = useQuery(api.specZones.listByProject, { projectId: report.projectId });
   const pileTypes = useQuery(api.pileTypes.listByProject, { projectId: report.projectId });
@@ -349,11 +349,11 @@ export function PileLoadForm({ reportId, report, detail, readOnly, incrementEdit
         </Field>
       </section>
 
-      {/* Load Increments editor — injected from parent */}
-      {incrementEditor && (
+      {/* Load Increments editor — uses live form value for instant label updates */}
+      {renderIncrementEditor && (
         <>
           <div className="border-t-2 border-muted pt-2" />
-          {incrementEditor}
+          {renderIncrementEditor(form.watch("loadDirection"))}
         </>
       )}
 
