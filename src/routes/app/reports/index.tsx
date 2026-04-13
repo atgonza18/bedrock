@@ -184,7 +184,7 @@ function MyReportsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {filtered?.map((r) => {
             const displayDate = getDisplayDate(r);
             return (
@@ -194,10 +194,10 @@ function MyReportsPage() {
                 params={{ reportId: r._id }}
               >
                 <Card className="hover:shadow-md transition-shadow duration-150 group">
-                  <CardContent className="py-4">
+                  <CardContent className="py-2.5">
                     <div className="flex items-center gap-3">
-                      <div className="size-9 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-amber-brand/10 transition-colors duration-150">
-                        <FileText className="size-4 text-muted-foreground group-hover:text-amber-brand transition-colors duration-150" />
+                      <div className="size-8 rounded-md bg-muted flex items-center justify-center shrink-0 group-hover:bg-amber-brand/10 transition-colors duration-150">
+                        <FileText className="size-3.5 text-muted-foreground group-hover:text-amber-brand transition-colors duration-150" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">

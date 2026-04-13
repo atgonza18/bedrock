@@ -279,7 +279,7 @@ function ProjectDetailPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {(statusFilter === "all" ? reports : reports.filter(r => r.status === statusFilter)).length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
                   No reports match this filter.
@@ -292,10 +292,10 @@ function ProjectDetailPage() {
                     params={{ reportId: r._id }}
                   >
                     <Card className="hover:shadow-md transition-shadow duration-150 group">
-                      <CardContent className="py-3.5">
+                      <CardContent className="py-2.5">
                         <div className="flex items-center gap-3">
-                          <div className="size-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                            <FileText className="size-4 text-muted-foreground" />
+                          <div className="size-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                            <FileText className="size-3.5 text-muted-foreground" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
