@@ -52,6 +52,7 @@ export const reportStatus = v.union(
   v.literal("rejected"),
   v.literal("approved"),
   v.literal("delivered"),
+  v.literal("archived"),
 );
 
 export const cylinderSetStatus = v.union(
@@ -84,6 +85,8 @@ export const auditEvent = v.union(
   v.literal("email_sent"),
   v.literal("email_failed"),
   v.literal("portal_viewed"),
+  v.literal("archived"),
+  v.literal("restored"),
 );
 export default defineSchema({
   ...authTables,
@@ -276,6 +279,11 @@ export default defineSchema({
 
     deliveredAt: v.optional(v.number()),
     pdfStorageId: v.optional(v.id("_storage")),
+
+    // Soft-delete: stores the status before archiving so we can restore
+    archivedFromStatus: v.optional(v.string()),
+    archivedAt: v.optional(v.number()),
+    archivedByUserId: v.optional(v.id("users")),
 
     // Optional link to a project spec zone (for per-area acceptance criteria)
     specZoneId: v.optional(v.id("projectSpecZones")),

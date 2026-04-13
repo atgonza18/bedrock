@@ -29,6 +29,10 @@ const STATUS_CONFIG: Record<
     label: "Delivered",
     className: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800",
   },
+  archived: {
+    label: "Archived",
+    className: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700",
+  },
 };
 
 export function ReportStatusBadge({ status }: { status: string }) {

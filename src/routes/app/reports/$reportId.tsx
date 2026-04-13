@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
+  Archive,
+  ArchiveRestore,
   ArrowLeft,
   Download,
   ExternalLink,
@@ -77,6 +79,8 @@ function ReportDetailPage() {
   const submitReport = useMutation(api.reports.mutations.submit);
   const approveMut = useMutation(api.reports.mutations.approve);
   const rejectMut = useMutation(api.reports.mutations.rejectWithComments);
+  const archiveMut = useMutation(api.reports.mutations.archive);
+  const restoreMut = useMutation(api.reports.mutations.restore);
   const generateUploadUrl = useMutation(api.reports.attachments.generateUploadUrl);
   const [showResubmitDialog, setShowResubmitDialog] = useState(false);
   const [resubmissionNote, setResubmissionNote] = useState("");
@@ -326,6 +330,21 @@ function ReportDetailPage() {
               </Button>
             </div>
           )}
+          {report.status !== "archived" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground shrink-0 hidden sm:inline-flex"
+              onClick={() => {
+                void archiveMut({ reportId: report._id }).then(() =>
+                  toast.success("Report archived."),
+                );
+              }}
+            >
+              <Archive className="h-3.5 w-3.5 mr-1" />
+              Archive
+            </Button>
+          )}
         </div>
 
         {/* Status progress bar */}
@@ -349,6 +368,36 @@ function ReportDetailPage() {
           </div>
           <Progress value={statusProgress} className="h-1.5" />
         </div>
+
+        {/* Archived banner */}
+        {report.status === "archived" && (
+          <Card className="border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Archive className="size-4 text-amber-600" />
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    This report was archived{report.archivedAt ? ` on ${new Date(report.archivedAt).toLocaleDateString()}` : ""}.
+                  </p>
+                </div>
+                {isPmOrAdmin && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      void restoreMut({ reportId: report._id }).then(() =>
+                        toast.success("Report restored."),
+                      );
+                    }}
+                  >
+                    <ArchiveRestore className="h-3.5 w-3.5 mr-1" />
+                    Restore
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Sticky mobile action bar */}

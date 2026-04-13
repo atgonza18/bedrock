@@ -1,16 +1,25 @@
 import { useMemo, useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReportStatusBadge } from "@/features/reports/ReportStatusBadge";
 import { useSetBreadcrumbs } from "@/components/layout/breadcrumb-context";
-import { FileText, FolderKanban, ArrowUpDown, Clock } from "lucide-react";
+import { useCurrentMember } from "@/features/auth/useCurrentMember";
+import { FileText, FolderKanban, ArrowUpDown, Clock, MoreHorizontal, Archive, ArchiveRestore } from "lucide-react";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { KIND_LABELS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -31,6 +40,7 @@ const STATUS_FILTERS = [
   { value: "rejected", label: "Rejected" },
   { value: "approved", label: "Approved" },
   { value: "delivered", label: "Delivered" },
+  { value: "archived", label: "Archived" },
 ] as const;
 
 const SORT_OPTIONS = [
@@ -61,6 +71,10 @@ function MyReportsPage() {
   const reports = useQuery(api.reports.queries.listMyReports);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const me = useCurrentMember();
+  const isPmOrAdmin = me?.state === "ok" && (me.membership.role === "pm" || me.membership.role === "admin");
+  const archiveMut = useMutation(api.reports.mutations.archive);
+  const restoreMut = useMutation(api.reports.mutations.restore);
 
   useSetBreadcrumbs([{ label: "My Reports" }]);
 
@@ -232,6 +246,50 @@ function MyReportsPage() {
                           </p>
                         </div>
                         <ReportStatusBadge status={r.status} />
+                        {/* Archive / Restore menu */}
+                        {(r.status !== "archived" || isPmOrAdmin) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground"
+                                onClick={(e) => e.preventDefault()}
+                              >
+                                <MoreHorizontal className="size-4" />
+                                <span className="sr-only">Actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.preventDefault()}>
+                              {r.status !== "archived" && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    void archiveMut({ reportId: r._id }).then(() =>
+                                      toast.success("Report archived."),
+                                    );
+                                  }}
+                                >
+                                  <Archive className="size-4 mr-2" />
+                                  Archive
+                                </DropdownMenuItem>
+                              )}
+                              {r.status === "archived" && isPmOrAdmin && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    void restoreMut({ reportId: r._id }).then(() =>
+                                      toast.success("Report restored."),
+                                    );
+                                  }}
+                                >
+                                  <ArchiveRestore className="size-4 mr-2" />
+                                  Restore
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                     </div>
                   </CardContent>

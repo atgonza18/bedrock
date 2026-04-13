@@ -307,3 +307,89 @@ export const approve = mutation({
     });
   },
 });
+
+// ---------- Archive & Restore ----------
+
+/**
+ * Soft-delete a report by moving it to "archived" status.
+ * - Techs can archive their own drafts/rejected reports.
+ * - PMs and admins can archive any report in any status.
+ * The previous status is saved so the report can be restored.
+ */
+export const archive = mutation({
+  args: {
+    reportId: v.id("reports"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, { reportId, reason }) => {
+    const member = await requireInternal(ctx);
+    const { org, userId } = member;
+    const report = orgScoped(org._id, await ctx.db.get("reports", reportId));
+
+    if (report.status === "archived") {
+      return; // Already archived
+    }
+
+    // Permission check: techs can only archive their own draft/rejected reports
+    const isTech = member.membership.role === "tech";
+    if (isTech) {
+      requireOwnership(member, report);
+      if (report.status !== "draft" && report.status !== "rejected") {
+        throw new ConvexError({
+          code: "FORBIDDEN",
+          message: "Techs can only archive draft or rejected reports.",
+        });
+      }
+    }
+    // PMs and admins can archive any report (no additional check needed)
+
+    assertTransition(report.status as any, "archived");
+
+    await ctx.db.patch("reports", reportId, {
+      status: "archived",
+      archivedFromStatus: report.status,
+      archivedAt: Date.now(),
+      archivedByUserId: userId,
+    });
+
+    await appendAudit(
+      ctx, org._id, reportId, userId, "archived",
+      reason ? JSON.stringify({ reason }) : undefined,
+    );
+  },
+});
+
+/**
+ * Restore an archived report to its previous status.
+ * Only PMs and admins can restore.
+ */
+export const restore = mutation({
+  args: {
+    reportId: v.id("reports"),
+  },
+  handler: async (ctx, { reportId }) => {
+    const { org, userId } = await requireRole(ctx, ["admin", "pm"]);
+    const report = orgScoped(org._id, await ctx.db.get("reports", reportId));
+
+    if (report.status !== "archived") {
+      throw new ConvexError({
+        code: "NOT_ARCHIVED",
+        message: "Only archived reports can be restored.",
+      });
+    }
+
+    const restoreTo = (report.archivedFromStatus ?? "draft") as "draft" | "submitted" | "in_review" | "rejected" | "approved" | "delivered";
+
+    await ctx.db.patch("reports", reportId, {
+      status: restoreTo,
+      archivedFromStatus: undefined,
+      archivedAt: undefined,
+      archivedByUserId: undefined,
+    });
+
+    await appendAudit(
+      ctx, org._id, reportId, userId, "restored",
+      JSON.stringify({ restoredTo: restoreTo }),
+    );
+  },
+});

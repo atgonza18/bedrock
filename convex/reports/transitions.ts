@@ -6,16 +6,18 @@ export type ReportStatus =
   | "in_review"
   | "rejected"
   | "approved"
-  | "delivered";
+  | "delivered"
+  | "archived";
 
 /** Allowed status transitions. Key = from, values = allowed tos. */
 const VALID_TRANSITIONS: Record<ReportStatus, ReportStatus[]> = {
-  draft: ["submitted"],
-  submitted: ["in_review"],
-  in_review: ["approved", "rejected"],
-  rejected: ["submitted"],          // tech re-submits after fixing
-  approved: ["delivered"],
-  delivered: [],                     // terminal
+  draft: ["submitted", "archived"],
+  submitted: ["in_review", "archived"],
+  in_review: ["approved", "rejected", "archived"],
+  rejected: ["submitted", "archived"],
+  approved: ["delivered", "archived"],
+  delivered: ["archived"],
+  archived: [],           // restore is handled separately, not via assertTransition
 };
 
 /**
