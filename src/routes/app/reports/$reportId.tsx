@@ -122,7 +122,8 @@ function ReportDetailPage() {
   const isResubmission = report.status === "rejected";
   const isPmOrAdmin = me?.state === "ok" && (me.membership.role === "pm" || me.membership.role === "admin");
   const canReview = isPmOrAdmin && report.status === "in_review";
-  const hasTimeline = data.auditLog && data.auditLog.length > 0;
+  const isClientUser = me?.state === "ok" && me.membership.role === "client";
+  const hasTimeline = !isClientUser && data.auditLog && data.auditLog.length > 0;
 
   const handleApprove = async () => {
     if (!signatureDataUrl) return;
