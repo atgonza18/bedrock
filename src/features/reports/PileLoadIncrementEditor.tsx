@@ -11,9 +11,17 @@ type Props = {
   reportId: Id<"reports">;
   increments: Doc<"pileLoadIncrements">[];
   readOnly?: boolean;
+  loadDirection?: string;
 };
 
-export function PileLoadIncrementEditor({ reportId, increments, readOnly }: Props) {
+const MOVEMENT_LABELS: Record<string, { load: string; movement: string; header: string }> = {
+  axial_compression: { load: "Load (kips)", movement: "Settlement (in)", header: "Load Increments" },
+  axial_tension: { load: "Uplift load (kips)", movement: "Uplift (in)", header: "Load Increments" },
+  lateral: { load: "Lateral load (kips)", movement: "Deflection (in)", header: "Load Increments" },
+};
+
+export function PileLoadIncrementEditor({ reportId, increments, readOnly, loadDirection }: Props) {
+  const labels = MOVEMENT_LABELS[loadDirection ?? ""] ?? MOVEMENT_LABELS.axial_compression;
   const addIncrement = useMutation(api.reports.pileLoadMutations.addIncrement);
   const removeIncrement = useMutation(api.reports.pileLoadMutations.removeIncrement);
   const [form, setForm] = useState({
@@ -25,7 +33,7 @@ export function PileLoadIncrementEditor({ reportId, increments, readOnly }: Prop
   return (
     <section className="space-y-3">
       <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-        Load Increments
+        {labels.header}
       </h3>
       {increments.length > 0 && (
         <div className="overflow-x-auto">
@@ -33,9 +41,9 @@ export function PileLoadIncrementEditor({ reportId, increments, readOnly }: Prop
             <thead>
               <tr className="border-b text-xs text-muted-foreground">
                 <th className="text-left py-1 pr-2">#</th>
-                <th className="text-right py-1 pr-2">Load (kips)</th>
+                <th className="text-right py-1 pr-2">{labels.load}</th>
                 <th className="text-right py-1 pr-2">Held (min)</th>
-                <th className="text-right py-1 pr-2">Settlement (in)</th>
+                <th className="text-right py-1 pr-2">{labels.movement}</th>
                 <th className="text-left py-1 pr-2">Applied</th>
                 {!readOnly && <th className="w-8" />}
               </tr>
@@ -68,7 +76,7 @@ export function PileLoadIncrementEditor({ reportId, increments, readOnly }: Prop
       {!readOnly && (
         <div className="grid grid-cols-3 gap-2 pt-2">
           <div className="space-y-1">
-            <Label className="text-xs">Load (kips)</Label>
+            <Label className="text-xs">{labels.load}</Label>
             <Input className="h-8 text-sm" inputMode="decimal" value={form.loadKips}
               onChange={(e) => setForm({ ...form, loadKips: e.target.value })} />
           </div>
@@ -78,7 +86,7 @@ export function PileLoadIncrementEditor({ reportId, increments, readOnly }: Prop
               onChange={(e) => setForm({ ...form, heldForMinutes: e.target.value })} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Settlement (in)</Label>
+            <Label className="text-xs">{labels.movement}</Label>
             <Input className="h-8 text-sm" inputMode="decimal" value={form.netSettlementIn}
               onChange={(e) => setForm({ ...form, netSettlementIn: e.target.value })} />
           </div>

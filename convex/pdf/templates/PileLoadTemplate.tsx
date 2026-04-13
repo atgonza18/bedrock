@@ -247,7 +247,7 @@ export function PileLoadContent({
                   Held (min)
                 </Text>
                 <Text style={[styles.tableHeaderCell, { width: 80 }]}>
-                  Settlement (in)
+                  {detail.loadDirection === "axial_tension" ? "Uplift (in)" : detail.loadDirection === "lateral" ? "Deflection (in)" : "Settlement (in)"}
                 </Text>
               </View>
               {pileLoadIncrements.map((inc: any, i: number) => (
@@ -272,12 +272,15 @@ export function PileLoadContent({
             </View>
           </View>
 
-          {/* Load-Settlement Chart */}
+          {/* Load-Movement Chart */}
           <View style={styles.chartContainer}>
-            <Text style={styles.chartTitle}>Load-Settlement Curve</Text>
+            <Text style={styles.chartTitle}>
+              {detail.loadDirection === "axial_tension" ? "Load-Uplift Curve" : detail.loadDirection === "lateral" ? "Load-Deflection Curve" : "Load-Settlement Curve"}
+            </Text>
             <LoadSettlementChart
               increments={pileLoadIncrements}
               designLoadKips={specZone?.specPileDesignLoadKips ?? detail.designLoadKips}
+              loadDirection={detail.loadDirection}
             />
           </View>
         </>
@@ -309,10 +312,13 @@ export function PileLoadContent({
 function LoadSettlementChart({
   increments,
   designLoadKips,
+  loadDirection,
 }: {
   increments: any[];
   designLoadKips?: number;
+  loadDirection?: string;
 }) {
+  const movementLabel = loadDirection === "axial_tension" ? "Uplift (in) \u2193" : loadDirection === "lateral" ? "Deflection (in) \u2193" : "Settlement (in) \u2193";
   if (increments.length < 2) return null;
 
   const W = 380;
@@ -340,7 +346,7 @@ function LoadSettlementChart({
     <View>
       {/* Axis labels as Text elements */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2, paddingHorizontal: PAD }}>
-        <Text style={{ fontSize: 6, color: "#888" }}>Settlement (in) ↓</Text>
+        <Text style={{ fontSize: 6, color: "#888" }}>{movementLabel}</Text>
         <Text style={{ fontSize: 6, color: "#888" }}>→ Load (kips)</Text>
       </View>
 
