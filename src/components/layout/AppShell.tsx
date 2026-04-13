@@ -236,6 +236,7 @@ function NavItem({
   exact?: boolean;
 }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
+  const { setOpenMobile, isMobile } = useSidebar();
   const isActive = exact
     ? currentPath === to || currentPath === to + "/"
     : currentPath.startsWith(to);
@@ -243,7 +244,7 @@ function NavItem({
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
-        <Link to={to}>
+        <Link to={to} onClick={() => { if (isMobile) setOpenMobile(false); }}>
           <Icon className="size-4" />
           <span>{label}</span>
         </Link>
