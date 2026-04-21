@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { z } from "zod";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -24,8 +25,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogEyebrow,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ReportStatusBadge } from "@/features/reports/ReportStatusBadge";
@@ -52,12 +58,13 @@ import {
   Layers,
   Pencil,
   Trash2,
-  XIcon,
 } from "lucide-react";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { KIND_LABELS } from "@/lib/constants";
+import { reportKindLabel } from "@/lib/constants";
 import { useCurrentMember } from "@/features/auth/useCurrentMember";
-import { canCreateReport, canReview } from "@/lib/permissions";
+import { canCreateReport, canReview, permits } from "@/lib/permissions";
+import { TestKindIcon } from "@/components/test-icons";
+import { ClipboardList } from "lucide-react";
 
 const REPORT_KINDS = [
   { kind: "concrete_field", label: "Concrete Field Test" },
@@ -67,15 +74,28 @@ const REPORT_KINDS = [
   { kind: "pile_load", label: "Pile Load Test" },
 ] as const;
 
+const searchSchema = z.object({
+  tab: z
+    .enum(["reports", "team", "recipients", "specs", "pile-types"])
+    .optional(),
+  manage: z.coerce.number().optional(),
+});
+
 export const Route = createFileRoute("/app/projects/$projectId")({
+  validateSearch: searchSchema,
   component: ProjectDetailPage,
 });
 
 function ProjectDetailPage() {
   const { projectId } = Route.useParams();
+  const search = Route.useSearch();
   const router = useRouter();
   const me = useCurrentMember();
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<string>(search.tab ?? "reports");
+  useEffect(() => {
+    if (search.tab) setActiveTab(search.tab);
+  }, [search.tab]);
   const showNewReport = me?.state === "ok" && canCreateReport(me);
   const data = useQuery(api.projects.getById, {
     projectId: projectId as Id<"projects">,
@@ -104,6 +124,7 @@ function ProjectDetailPage() {
   }
 
   const { project, client, assignments, defaultRecipients } = data;
+  const canManageTeam = me?.state === "ok" && permits(me, "canManageTeam");
 
   return (
     <PageTransition>
@@ -146,32 +167,12 @@ function ProjectDetailPage() {
           </div>
         </div>
         {showNewReport && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-1.5" />
-                New report
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {REPORT_KINDS.map((rk) => (
-                <DropdownMenuItem key={rk.kind} asChild>
-                  <Link
-                    to="/app/reports/new/$kind"
-                    params={{ kind: rk.kind }}
-                    search={{ projectId: project._id }}
-                  >
-                    {rk.label}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <NewReportMenu projectId={project._id} />
         )}
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="reports">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList variant="line">
           <TabsTrigger value="reports" className="gap-1.5 px-3">
             <FileText className="h-3.5 w-3.5" />
@@ -303,12 +304,23 @@ function ProjectDetailPage() {
                                 {r.number}
                               </span>
                               <Badge variant="outline" className="text-xs capitalize">
-                                {KIND_LABELS[r.kind] ?? r.kind}
+                                {reportKindLabel(r.kind, r.templateName)}
                               </Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              by {r.creatorName}
-                            </p>
+                            {(() => {
+                              const myName =
+                                me?.state === "ok"
+                                  ? me.profile.fullName
+                                  : undefined;
+                              if (r.creatorName && r.creatorName !== myName) {
+                                return (
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    by {r.creatorName}
+                                  </p>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                           <ReportStatusBadge status={r.status} />
                         </div>
@@ -323,16 +335,26 @@ function ProjectDetailPage() {
 
         <TabsContent value="team" className="mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Assigned team</CardTitle>
-              <CardDescription>
-                B&amp;E staff assigned to this project.
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+              <div>
+                <CardTitle className="text-base">Assigned team</CardTitle>
+                <CardDescription>
+                  B&amp;E staff assigned to this project.
+                </CardDescription>
+              </div>
+              {canManageTeam && (
+                <ManageTeamDialog
+                  projectId={project._id}
+                  assignments={assignments}
+                  autoOpen={search.manage === 1}
+                />
+              )}
             </CardHeader>
             <CardContent>
               {assignments.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No team assigned yet. An admin can assign people.
+                  No team assigned yet.
+                  {canManageTeam && " Use “Manage team” above to add people."}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -368,16 +390,26 @@ function ProjectDetailPage() {
 
         <TabsContent value="recipients" className="mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Default recipients</CardTitle>
-              <CardDescription>
-                Client contacts who receive delivered reports.
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+              <div>
+                <CardTitle className="text-base">Default recipients</CardTitle>
+                <CardDescription>
+                  Client contacts who receive delivered reports.
+                </CardDescription>
+              </div>
+              {canManageTeam && client && (
+                <ManageRecipientsDialog
+                  projectId={project._id}
+                  clientId={client._id}
+                  selectedIds={defaultRecipients.map((r) => r._id)}
+                />
+              )}
             </CardHeader>
             <CardContent>
               {defaultRecipients.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No default recipients configured.
+                  {canManageTeam && " Use “Manage recipients” above to pick who gets the approved PDF + portal link."}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -687,177 +719,156 @@ function ZoneFormDialog({
   };
 
   return (
-    <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden" showCloseButton={false}>
-      {/* Accent header */}
-      <div className="bg-gradient-to-b from-amber-50 to-transparent dark:from-amber-950/40 dark:to-transparent px-5 pt-5 pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0 mt-0.5">
-              <MapPin className="size-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-semibold">
-                {isEditing ? "Edit zone" : "Add a test zone"}
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Define acceptance criteria for a specific area of the project.
-              </p>
-            </div>
-          </div>
-          <DialogClose asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground"
-            >
-              <XIcon className="size-4" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </DialogClose>
-        </div>
-      </div>
+    <DialogContent>
+      <DialogHeader>
+        <DialogEyebrow>{isEditing ? "Edit zone" : "New zone"}</DialogEyebrow>
+        <DialogTitle>
+          {isEditing ? "Edit zone" : "Add a test zone"}
+        </DialogTitle>
+        <DialogDescription>
+          Define acceptance criteria for a specific area of the project.
+        </DialogDescription>
+      </DialogHeader>
 
-      {/* Form */}
       <form
         id="zone-form"
-        className="px-5 py-4 space-y-4 max-h-[60vh] overflow-y-auto"
         onSubmit={handleSubmit}
       >
-        <div className="space-y-2">
-          <Label>Name *</Label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Zone A — Substation Pad"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Description</Label>
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="e.g. Main transformer pad and switchgear area"
-            rows={2}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Coordinates</Label>
-          <Input
-            value={coordinates}
-            onChange={(e) => setCoordinates(e.target.value)}
-            placeholder="e.g. STA 10+00 to STA 15+00"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
+        <DialogBody className="space-y-4 max-h-[60vh] overflow-y-auto">
           <div className="space-y-2">
-            <Label>Min compaction (%)</Label>
+            <Label>Name *</Label>
             <Input
-              type="number"
-              step="any"
-              value={minCompaction}
-              onChange={(e) => setMinCompaction(e.target.value)}
-              placeholder="95"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Zone A — Substation Pad"
+              required
             />
           </div>
           <div className="space-y-2">
-            <Label>Min concrete strength (psi)</Label>
-            <Input
-              type="number"
-              step="any"
-              value={minStrength}
-              onChange={(e) => setMinStrength(e.target.value)}
-              placeholder="4000"
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Pile type</Label>
-          <Input
-            value={pileType}
-            onChange={(e) => setPileType(e.target.value)}
-            placeholder='e.g. HP14x73 steel, 18" precast'
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Design load (kips)</Label>
-            <Input
-              type="number"
-              step="any"
-              value={pileDesignLoad}
-              onChange={(e) => setPileDesignLoad(e.target.value)}
-              placeholder="0"
+            <Label>Description</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g. Main transformer pad and switchgear area"
+              rows={2}
             />
           </div>
           <div className="space-y-2">
-            <Label>Failure criterion</Label>
+            <Label>Coordinates</Label>
             <Input
-              value={pileFailureCriterion}
-              onChange={(e) => setPileFailureCriterion(e.target.value)}
-              placeholder="e.g. Davisson method, 10% of pile diameter"
+              value={coordinates}
+              onChange={(e) => setCoordinates(e.target.value)}
+              placeholder="e.g. STA 10+00 to STA 15+00"
             />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Proctor type</Label>
-          <Select value={proctorType} onValueChange={setProctorType}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select proctor type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="standard">Standard</SelectItem>
-              <SelectItem value="modified">Modified</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Reference Proctor</Label>
-          <Select value={proctorId} onValueChange={setProctorId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a Proctor curve..." />
-            </SelectTrigger>
-            <SelectContent>
-              {proctors?.map((p) => (
-                <SelectItem key={p._id} value={p._id}>
-                  {p.label} — {p.maxDryDensityPcf} pcf / {p.optimumMoisturePct}%
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Spec notes</Label>
-          <Textarea
-            value={specNotes}
-            onChange={(e) => setSpecNotes(e.target.value)}
-            placeholder="Additional specifications or notes..."
-            rows={2}
-          />
-        </div>
-      </form>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Min compaction (%)</Label>
+              <Input
+                type="number"
+                step="any"
+                value={minCompaction}
+                onChange={(e) => setMinCompaction(e.target.value)}
+                placeholder="95"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Min concrete strength (psi)</Label>
+              <Input
+                type="number"
+                step="any"
+                value={minStrength}
+                onChange={(e) => setMinStrength(e.target.value)}
+                placeholder="4000"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Pile type</Label>
+            <Input
+              value={pileType}
+              onChange={(e) => setPileType(e.target.value)}
+              placeholder='e.g. HP14x73 steel, 18" precast'
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Design load (kips)</Label>
+              <Input
+                type="number"
+                step="any"
+                value={pileDesignLoad}
+                onChange={(e) => setPileDesignLoad(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Failure criterion</Label>
+              <Input
+                value={pileFailureCriterion}
+                onChange={(e) => setPileFailureCriterion(e.target.value)}
+                placeholder="e.g. Davisson method, 10% of pile diameter"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Proctor type</Label>
+            <Select value={proctorType} onValueChange={setProctorType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select proctor type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">Standard</SelectItem>
+                <SelectItem value="modified">Modified</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Reference Proctor</Label>
+            <Select value={proctorId} onValueChange={setProctorId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a Proctor curve..." />
+              </SelectTrigger>
+              <SelectContent>
+                {proctors?.map((p) => (
+                  <SelectItem key={p._id} value={p._id}>
+                    {p.label} — {p.maxDryDensityPcf} pcf / {p.optimumMoisturePct}%
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Spec notes</Label>
+            <Textarea
+              value={specNotes}
+              onChange={(e) => setSpecNotes(e.target.value)}
+              placeholder="Additional specifications or notes..."
+              rows={2}
+            />
+          </div>
+        </DialogBody>
 
-      {/* Footer */}
-      <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
-        <DialogClose asChild>
-          <Button variant="outline">Cancel</Button>
-        </DialogClose>
-        <Button
-          type="submit"
-          form="zone-form"
-          disabled={submitting || !name.trim()}
-          className="min-w-[130px]"
-        >
-          <MapPin className="size-4 mr-1.5" />
-          {submitting
-            ? isEditing
-              ? "Saving..."
-              : "Adding..."
-            : isEditing
-              ? "Save zone"
-              : "Add zone"}
-        </Button>
-      </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button
+            type="submit"
+            disabled={submitting || !name.trim()}
+            className="min-w-[130px]"
+          >
+            <MapPin className="size-4 mr-1.5" />
+            {submitting
+              ? isEditing
+                ? "Saving..."
+                : "Adding..."
+              : isEditing
+                ? "Save zone"
+                : "Add zone"}
+          </Button>
+        </DialogFooter>
+      </form>
     </DialogContent>
   );
 }
@@ -1079,134 +1090,492 @@ function PileTypeFormDialog({
   };
 
   return (
-    <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden" showCloseButton={false}>
-      {/* Accent header */}
-      <div className="bg-gradient-to-b from-orange-50 to-transparent dark:from-orange-950/40 dark:to-transparent px-5 pt-5 pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center shrink-0 mt-0.5">
-              <Layers className="size-4 text-orange-600 dark:text-orange-400" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-semibold">
-                {isEditing ? "Edit pile type" : "Add a pile type"}
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Define a pile type with specs for visual identification.
-              </p>
-            </div>
-          </div>
-          <DialogClose asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground"
-            >
-              <XIcon className="size-4" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </DialogClose>
-        </div>
-      </div>
+    <DialogContent>
+      <DialogHeader>
+        <DialogEyebrow>{isEditing ? "Edit pile" : "New pile"}</DialogEyebrow>
+        <DialogTitle>
+          {isEditing ? "Edit pile type" : "Add a pile type"}
+        </DialogTitle>
+        <DialogDescription>
+          Define a pile type with specs for visual identification.
+        </DialogDescription>
+      </DialogHeader>
 
-      {/* Form */}
       <form
         id="pile-type-form"
-        className="px-5 py-4 space-y-4 max-h-[60vh] overflow-y-auto"
         onSubmit={handleSubmit}
       >
-        <div className="space-y-2">
-          <Label>Name *</Label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="HP14x73 Steel H-Pile"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Color *</Label>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="h-9 w-14 cursor-pointer rounded border border-input bg-background p-0.5"
-            />
-            <span className="text-sm text-muted-foreground font-mono">{color}</span>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Description</Label>
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Optional description of this pile type..."
-            rows={2}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
+        <DialogBody className="space-y-4 max-h-[60vh] overflow-y-auto">
           <div className="space-y-2">
-            <Label>Design load (kips)</Label>
+            <Label>Name *</Label>
             <Input
-              type="number"
-              step="any"
-              value={designLoadKips}
-              onChange={(e) => setDesignLoadKips(e.target.value)}
-              placeholder="0"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="HP14x73 Steel H-Pile"
+              required
             />
           </div>
           <div className="space-y-2">
-            <Label>Installed length (ft)</Label>
-            <Input
-              type="number"
-              step="any"
-              value={installedLengthFt}
-              onChange={(e) => setInstalledLengthFt(e.target.value)}
-              placeholder="0"
+            <Label>Color *</Label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="h-9 w-14 cursor-pointer rounded border border-input bg-background p-0.5"
+              />
+              <span className="text-sm text-muted-foreground font-mono">{color}</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Optional description of this pile type..."
+              rows={2}
             />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Failure criterion</Label>
-          <Input
-            value={failureCriterion}
-            onChange={(e) => setFailureCriterion(e.target.value)}
-            placeholder="Davisson method"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Notes</Label>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Additional notes..."
-            rows={2}
-          />
-        </div>
-      </form>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Design load (kips)</Label>
+              <Input
+                type="number"
+                step="any"
+                value={designLoadKips}
+                onChange={(e) => setDesignLoadKips(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Installed length (ft)</Label>
+              <Input
+                type="number"
+                step="any"
+                value={installedLengthFt}
+                onChange={(e) => setInstalledLengthFt(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Failure criterion</Label>
+            <Input
+              value={failureCriterion}
+              onChange={(e) => setFailureCriterion(e.target.value)}
+              placeholder="Davisson method"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Additional notes..."
+              rows={2}
+            />
+          </div>
+        </DialogBody>
 
-      {/* Footer */}
-      <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
-        <DialogClose asChild>
-          <Button variant="outline">Cancel</Button>
-        </DialogClose>
-        <Button
-          type="submit"
-          form="pile-type-form"
-          disabled={submitting || !name.trim()}
-          className="min-w-[130px]"
-        >
-          <Layers className="size-4 mr-1.5" />
-          {submitting
-            ? isEditing
-              ? "Saving..."
-              : "Adding..."
-            : isEditing
-              ? "Save pile type"
-              : "Add pile type"}
-        </Button>
-      </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button
+            type="submit"
+            disabled={submitting || !name.trim()}
+            className="min-w-[130px]"
+          >
+            <Layers className="size-4 mr-1.5" />
+            {submitting
+              ? isEditing
+                ? "Saving..."
+                : "Adding..."
+              : isEditing
+                ? "Save pile type"
+                : "Add pile type"}
+          </Button>
+        </DialogFooter>
+      </form>
     </DialogContent>
+  );
+}
+
+// ─── Manage team dialog ────────────────────────────────────────────────────
+
+function ManageTeamDialog({
+  projectId,
+  assignments,
+  autoOpen,
+}: {
+  projectId: Id<"projects">;
+  assignments: {
+    _id: Id<"projectAssignments">;
+    userId: Id<"users">;
+    role: string;
+    profile: { fullName: string } | null;
+  }[];
+  autoOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(!!autoOpen);
+  const router = useRouter();
+  useEffect(() => {
+    if (autoOpen) setOpen(true);
+  }, [autoOpen]);
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next && autoOpen) {
+      void router.navigate({
+        to: "/app/projects/$projectId",
+        params: { projectId },
+        search: { tab: "team" },
+        replace: true,
+      });
+    }
+  };
+  const members = useQuery(api.users.listOrgMembers, open ? {} : "skip");
+  const assignMut = useMutation(api.projects.assign);
+  const unassignMut = useMutation(api.projects.unassign);
+  const [addingUserId, setAddingUserId] = useState<string>("");
+  const [addingRole, setAddingRole] = useState<"pm" | "tech" | "observer">(
+    "tech",
+  );
+  const [busy, setBusy] = useState(false);
+
+  const assignedUserIds = new Set(assignments.map((a) => a.userId));
+  const availableMembers = (members ?? []).filter(
+    (m) =>
+      m.membership.status === "active" &&
+      m.membership.role !== "client" &&
+      !assignedUserIds.has(m.membership.userId),
+  );
+
+  const handleAdd = async () => {
+    if (!addingUserId) return;
+    setBusy(true);
+    try {
+      await assignMut({
+        projectId,
+        userId: addingUserId as Id<"users">,
+        role: addingRole,
+      });
+      toast.success("Team member assigned");
+      setAddingUserId("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRemove = async (assignmentId: Id<"projectAssignments">) => {
+    await unassignMut({ assignmentId });
+    toast.success("Assignment removed");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <Users className="size-3.5" />
+        Manage team
+      </Button>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogEyebrow>Project team</DialogEyebrow>
+          <DialogTitle>Manage team</DialogTitle>
+          <DialogDescription>
+            Assign techs, PMs, and observers. Non-assigned techs won&rsquo;t see this project.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody className="space-y-5">
+          <div className="space-y-2">
+            <Label className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+              Currently assigned
+            </Label>
+            {assignments.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">
+                Nobody assigned yet.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {assignments.map((a) => (
+                  <div
+                    key={a._id}
+                    className="flex items-center gap-3 rounded-md border px-3 py-2"
+                  >
+                    <span className="flex-1 text-sm">
+                      {a.profile?.fullName ?? "Unknown"}
+                    </span>
+                    <Badge variant="outline" className="capitalize text-xs">
+                      {a.role}
+                    </Badge>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={() => void handleRemove(a._id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2 border-t pt-4">
+            <Label className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+              Add someone
+            </Label>
+            <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+              <Select value={addingUserId} onValueChange={setAddingUserId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick a member…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableMembers.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      No unassigned members
+                    </div>
+                  ) : (
+                    availableMembers.map((m) => (
+                      <SelectItem
+                        key={m.membership._id}
+                        value={m.membership.userId}
+                      >
+                        {m.profile?.fullName ?? m.email ?? "Unknown"}
+                        <span className="ml-2 text-xs text-muted-foreground capitalize">
+                          {m.membership.role}
+                        </span>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <Select
+                value={addingRole}
+                onValueChange={(v) =>
+                  setAddingRole(v as "pm" | "tech" | "observer")
+                }
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tech">Tech</SelectItem>
+                  <SelectItem value="pm">PM</SelectItem>
+                  <SelectItem value="observer">Observer</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={() => void handleAdd()}
+                disabled={!addingUserId || busy}
+              >
+                <Plus className="size-3.5" />
+                Add
+              </Button>
+            </div>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => handleOpenChange(false)}>
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Manage recipients dialog ──────────────────────────────────────────────
+
+function ManageRecipientsDialog({
+  projectId,
+  clientId,
+  selectedIds,
+}: {
+  projectId: Id<"projects">;
+  clientId: Id<"clients">;
+  selectedIds: Id<"clientContacts">[];
+}) {
+  const [open, setOpen] = useState(false);
+  const contacts = useQuery(
+    api.clients.listContacts,
+    open ? { clientId } : "skip",
+  );
+  const updateProject = useMutation(api.projects.update);
+  const [selection, setSelection] = useState<Set<string>>(
+    () => new Set(selectedIds),
+  );
+  const [saving, setSaving] = useState(false);
+
+  // Re-sync selection when selectedIds changes (e.g. parent reloads).
+  useEffect(() => {
+    setSelection(new Set(selectedIds));
+  }, [selectedIds.join(","), open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggle = (id: string) => {
+    setSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateProject({
+        projectId,
+        defaultRecipientContactIds: [...selection] as Id<"clientContacts">[],
+      });
+      toast.success("Recipients updated");
+      setOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const active = (contacts ?? []).filter((c) => c.isActive !== false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <Mail className="size-3.5" />
+        Manage recipients
+      </Button>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogEyebrow>Delivery</DialogEyebrow>
+          <DialogTitle>Default recipients</DialogTitle>
+          <DialogDescription>
+            Pick the client contacts who should receive the PDF + portal link
+            when a report is approved.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          {contacts === undefined ? (
+            <Skeleton className="h-32 w-full" />
+          ) : active.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2">
+              This client has no active contacts yet. Add them in{" "}
+              <Link
+                to="/app/admin/clients"
+                className="underline underline-offset-2"
+              >
+                Admin → Clients
+              </Link>
+              .
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {active.map((c) => {
+                const checked = selection.has(c._id);
+                return (
+                  <label
+                    key={c._id}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md border px-3 py-2.5 cursor-pointer transition-colors",
+                      checked
+                        ? "border-foreground/40 bg-accent/40"
+                        : "hover:bg-accent/20",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggle(c._id)}
+                      className="size-4 rounded border-border"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {c.fullName}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {c.email}
+                        {c.title ? ` · ${c.title}` : ""}
+                      </p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="min-w-[130px]"
+          >
+            Save recipients
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── New-report menu (built-in kinds + custom templates) ─────────────────
+
+function NewReportMenu({ projectId }: { projectId: Id<"projects"> }) {
+  const templates = useQuery(api.testTemplates.list, {});
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button>
+          <Plus className="h-4 w-4 mr-1.5" />
+          New report
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[220px]">
+        {REPORT_KINDS.map((rk) => (
+          <DropdownMenuItem key={rk.kind} asChild>
+            <Link
+              to="/app/reports/new/$kind"
+              params={{ kind: rk.kind }}
+              search={{ projectId }}
+              className="flex items-center gap-2.5"
+            >
+              <TestKindIcon
+                kind={rk.kind}
+                width={16}
+                height={16}
+                className="text-muted-foreground"
+              />
+              {rk.label}
+            </Link>
+          </DropdownMenuItem>
+        ))}
+        {templates && templates.length > 0 && (
+          <>
+            <div className="border-t my-1" />
+            <div className="px-2 pt-1 pb-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+              Custom
+            </div>
+            {templates
+              .filter((t) => t.status === "active")
+              .map((t) => (
+                <DropdownMenuItem key={t._id} asChild>
+                  <Link
+                    to="/app/reports/new/$kind"
+                    params={{ kind: "custom" }}
+                    search={{ projectId, templateId: t._id }}
+                    className="flex items-center gap-2.5"
+                  >
+                    <ClipboardList
+                      className="text-muted-foreground"
+                      style={{ width: 16, height: 16 }}
+                    />
+                    {t.name}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

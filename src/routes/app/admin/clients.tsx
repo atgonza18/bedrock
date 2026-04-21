@@ -13,8 +13,13 @@ import {
 } from "@/components/ui/card";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogEyebrow,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -117,34 +122,17 @@ function CreateClientDialog({ onSuccess }: { onSuccess: () => void }) {
   const [submitting, setSubmitting] = useState(false);
 
   return (
-    <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden" showCloseButton={false}>
-      {/* Accent header */}
-      <div className="bg-gradient-to-b from-amber-50 to-transparent dark:from-amber-950/40 dark:to-transparent px-5 pt-5 pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0 mt-0.5">
-              <Building2 className="size-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-semibold">Add a client</DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Add an EPC or GC company you work with.
-              </p>
-            </div>
-          </div>
-          <DialogClose asChild>
-            <Button variant="ghost" size="icon-sm" className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground">
-              <XIcon className="size-4" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </DialogClose>
-        </div>
-      </div>
+    <DialogContent>
+      <DialogHeader>
+        <DialogEyebrow>New client</DialogEyebrow>
+        <DialogTitle>Add a client</DialogTitle>
+        <DialogDescription>
+          Add an EPC or GC company you work with.
+        </DialogDescription>
+      </DialogHeader>
 
-      {/* Form */}
       <form
         id="create-client-form"
-        className="px-5 py-4 space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           setSubmitting(true);
@@ -157,45 +145,45 @@ function CreateClientDialog({ onSuccess }: { onSuccess: () => void }) {
             .finally(() => setSubmitting(false));
         }}
       >
-        <div className="space-y-2">
-          <Label>Company name</Label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Turner Construction"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>
-            Notes
-            <span className="text-muted-foreground font-normal ml-1.5">Optional</span>
-          </Label>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Internal notes about this client..."
-            rows={2}
-            className="resize-none"
-          />
-        </div>
-      </form>
+        <DialogBody className="space-y-4">
+          <div className="space-y-2">
+            <Label>Company name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Turner Construction"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>
+              Notes
+              <span className="text-muted-foreground font-normal ml-1.5">Optional</span>
+            </Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Internal notes about this client..."
+              rows={2}
+              className="resize-none"
+            />
+          </div>
+        </DialogBody>
 
-      {/* Footer */}
-      <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
-        <DialogClose asChild>
-          <Button variant="outline">Cancel</Button>
-        </DialogClose>
-        <Button
-          type="submit"
-          form="create-client-form"
-          disabled={submitting}
-          className="min-w-[110px]"
-        >
-          <Building2 className="size-4 mr-1.5" />
-          {submitting ? "Adding..." : "Add client"}
-        </Button>
-      </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="min-w-[110px]"
+          >
+            <Building2 className="size-4 mr-1.5" />
+            {submitting ? "Adding..." : "Add client"}
+          </Button>
+        </DialogFooter>
+      </form>
     </DialogContent>
   );
 }
@@ -235,34 +223,17 @@ function ContactsCard({
                 Contact
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden" showCloseButton={false}>
-              {/* Accent header */}
-              <div className="bg-gradient-to-b from-sky-50 to-transparent dark:from-sky-950/40 dark:to-transparent px-5 pt-5 pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="size-9 rounded-lg bg-sky-100 dark:bg-sky-900/50 flex items-center justify-center shrink-0 mt-0.5">
-                      <UserPlus className="size-4 text-sky-600 dark:text-sky-400" />
-                    </div>
-                    <div>
-                      <DialogTitle className="text-base font-semibold">Add a contact</DialogTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Someone at {client?.name ?? "this company"} who receives reports.
-                      </p>
-                    </div>
-                  </div>
-                  <DialogClose asChild>
-                    <Button variant="ghost" size="icon-sm" className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground">
-                      <XIcon className="size-4" />
-                      <span className="sr-only">Close</span>
-                    </Button>
-                  </DialogClose>
-                </div>
-              </div>
+            <DialogContent>
+              <DialogHeader>
+                <DialogEyebrow>New contact</DialogEyebrow>
+                <DialogTitle>Add a contact</DialogTitle>
+                <DialogDescription>
+                  Someone at {client?.name ?? "this company"} who receives reports.
+                </DialogDescription>
+              </DialogHeader>
 
-              {/* Form */}
               <form
                 id="add-contact-form"
-                className="px-5 py-4 space-y-4"
                 onSubmit={(e) => {
                   e.preventDefault();
                   setContactSubmitting(true);
@@ -281,47 +252,47 @@ function ContactsCard({
                   }).finally(() => setContactSubmitting(false));
                 }}
               >
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 space-y-2">
-                    <Label>Full name</Label>
-                    <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Jane Smith" required />
+                <DialogBody className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2 space-y-2">
+                      <Label>Full name</Label>
+                      <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Jane Smith" required />
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label>Email</Label>
+                      <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="jane@company.com" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>
+                        Phone
+                        <span className="text-muted-foreground font-normal ml-1.5">Optional</span>
+                      </Label>
+                      <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="(555) 123-4567" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>
+                        Title
+                        <span className="text-muted-foreground font-normal ml-1.5">Optional</span>
+                      </Label>
+                      <Input value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} placeholder="Project Manager" />
+                    </div>
                   </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label>Email</Label>
-                    <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="jane@company.com" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>
-                      Phone
-                      <span className="text-muted-foreground font-normal ml-1.5">Optional</span>
-                    </Label>
-                    <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="(555) 123-4567" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>
-                      Title
-                      <span className="text-muted-foreground font-normal ml-1.5">Optional</span>
-                    </Label>
-                    <Input value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} placeholder="Project Manager" />
-                  </div>
-                </div>
-              </form>
+                </DialogBody>
 
-              {/* Footer */}
-              <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
-                <DialogClose asChild>
-                  <Button variant="outline">Cancel</Button>
-                </DialogClose>
-                <Button
-                  type="submit"
-                  form="add-contact-form"
-                  disabled={contactSubmitting}
-                  className="min-w-[120px]"
-                >
-                  <UserPlus className="size-4 mr-1.5" />
-                  {contactSubmitting ? "Adding..." : "Add contact"}
-                </Button>
-              </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="ghost">Cancel</Button>
+                  </DialogClose>
+                  <Button
+                    type="submit"
+                    disabled={contactSubmitting}
+                    className="min-w-[120px]"
+                  >
+                    <UserPlus className="size-4 mr-1.5" />
+                    {contactSubmitting ? "Adding..." : "Add contact"}
+                  </Button>
+                </DialogFooter>
+              </form>
             </DialogContent>
           </Dialog>
           <Button size="sm" variant="ghost" onClick={onClose} title="Close">

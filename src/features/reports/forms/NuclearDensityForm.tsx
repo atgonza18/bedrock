@@ -15,6 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { SaveIndicator } from "@/components/ui/save-indicator";
+import { useSaveState } from "@/features/reports/useSaveState";
 
 const nuclearDensitySchema = z.object({
   fieldDate: z.string().optional(),
@@ -78,6 +80,7 @@ export function NuclearDensityForm({ reportId, report, detail, readOnly, onProct
   const selectedProctor = proctors?.find((p) => p._id === selectedProctorId) ?? null;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initializedRef = useRef(false);
+  const { state: saveState, savedAt, track } = useSaveState();
 
   const form = useForm<NuclearDensityFormValues>({
     resolver: zodResolver(nuclearDensitySchema),
@@ -128,7 +131,7 @@ export function NuclearDensityForm({ reportId, report, detail, readOnly, onProct
         ? { tempF: toNum(weather.tempF), conditions: weather.conditions || undefined, windMph: toNum(weather.windMph) }
         : undefined;
 
-      void updateDraft({
+      void track(updateDraft({
         reportId,
         fieldDate: dateStrToTs(fieldDate),
         weather: cleanWeather,
@@ -141,9 +144,9 @@ export function NuclearDensityForm({ reportId, report, detail, readOnly, onProct
           materialDescription: detailFields.materialDescription || undefined,
           liftNumber: toNum(detailFields.liftNumber),
         },
-      });
+      }));
     },
-    [reportId, updateDraft, readOnly],
+    [reportId, updateDraft, readOnly, track],
   );
 
   const debouncedSave = useCallback(
@@ -175,6 +178,15 @@ export function NuclearDensityForm({ reportId, report, detail, readOnly, onProct
 
   return (
     <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+      {!readOnly && (
+        <div className="flex justify-end -mb-2 sticky top-16 z-20 sm:static sm:top-auto sm:z-auto pointer-events-none">
+          <SaveIndicator
+            state={saveState}
+            savedAt={savedAt}
+            className="pointer-events-auto bg-background/90 backdrop-blur-sm shadow-sm sm:shadow-none sm:bg-transparent sm:backdrop-blur-none"
+          />
+        </div>
+      )}
       {/* Section 1: Site Conditions */}
       <section className="space-y-4">
         <h3 className="font-heading text-sm font-semibold text-foreground">
@@ -190,10 +202,10 @@ export function NuclearDensityForm({ reportId, report, detail, readOnly, onProct
           <Select
             value={report.specZoneId ?? ""}
             onValueChange={(v) => {
-              void updateDraft({
+              void track(updateDraft({
                 reportId,
                 specZoneId: v as Id<"projectSpecZones">,
-              });
+              }));
             }}
             disabled={disabled}
           >
@@ -269,10 +281,10 @@ export function NuclearDensityForm({ reportId, report, detail, readOnly, onProct
               onValueChange={(v) => {
                 const p = proctors?.find((pr) => pr._id === v) ?? null;
                 // Save to server immediately (not through form auto-save since this isn't in RHF)
-                void updateDraft({
+                void track(updateDraft({
                   reportId,
                   detail: { referencedProctorId: v || undefined },
-                });
+                }));
                 onProctorChange?.(p ? { maxDryDensityPcf: p.maxDryDensityPcf, optimumMoisturePct: p.optimumMoisturePct } : null);
               }}
               disabled={disabled}

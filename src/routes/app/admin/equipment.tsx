@@ -13,8 +13,13 @@ import {
 } from "@/components/ui/card";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogEyebrow,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -180,43 +185,17 @@ function CreateEquipmentDialog({ onSuccess }: { onSuccess: () => void }) {
   const [submitting, setSubmitting] = useState(false);
 
   return (
-    <DialogContent
-      className="sm:max-w-md gap-0 p-0 overflow-hidden"
-      showCloseButton={false}
-    >
-      {/* Accent header */}
-      <div className="bg-gradient-to-b from-sky-50 to-transparent dark:from-sky-950/40 dark:to-transparent px-5 pt-5 pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg bg-sky-100 dark:bg-sky-900/50 flex items-center justify-center shrink-0 mt-0.5">
-              <Wrench className="size-4 text-sky-600 dark:text-sky-400" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-semibold">
-                Add equipment
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Register a gauge, meter, or other testing equipment.
-              </p>
-            </div>
-          </div>
-          <DialogClose asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground"
-            >
-              <XIcon className="size-4" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </DialogClose>
-        </div>
-      </div>
+    <DialogContent>
+      <DialogHeader>
+        <DialogEyebrow>New equipment</DialogEyebrow>
+        <DialogTitle>Add equipment</DialogTitle>
+        <DialogDescription>
+          Register a gauge, meter, or other testing equipment.
+        </DialogDescription>
+      </DialogHeader>
 
-      {/* Form */}
       <form
         id="create-equipment-form"
-        className="px-5 py-4 space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           setSubmitting(true);
@@ -254,133 +233,133 @@ function CreateEquipmentDialog({ onSuccess }: { onSuccess: () => void }) {
             .finally(() => setSubmitting(false));
         }}
       >
-        <div className="space-y-2">
-          <Label>Name</Label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Troxler 3440"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Type</Label>
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="nuclear_gauge">Nuclear Gauge</SelectItem>
-              <SelectItem value="air_meter">Air Meter</SelectItem>
-              <SelectItem value="compression_machine">
-                Compression Machine
-              </SelectItem>
-              <SelectItem value="dcp">DCP</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
+        <DialogBody className="space-y-4">
+          <div className="space-y-2">
+            <Label>Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Troxler 3440"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nuclear_gauge">Nuclear Gauge</SelectItem>
+                <SelectItem value="air_meter">Air Meter</SelectItem>
+                <SelectItem value="compression_machine">
+                  Compression Machine
+                </SelectItem>
+                <SelectItem value="dcp">DCP</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>
+                Model
+                <span className="text-muted-foreground font-normal ml-1.5">
+                  Optional
+                </span>
+              </Label>
+              <Input
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder="e.g. 3440 Plus"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>
+                Serial #
+                <span className="text-muted-foreground font-normal ml-1.5">
+                  Optional
+                </span>
+              </Label>
+              <Input
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                placeholder="e.g. SN-12345"
+              />
+            </div>
+          </div>
           <div className="space-y-2">
             <Label>
-              Model
+              Manufacturer
               <span className="text-muted-foreground font-normal ml-1.5">
                 Optional
               </span>
             </Label>
             <Input
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder="e.g. 3440 Plus"
+              value={manufacturer}
+              onChange={(e) => setManufacturer(e.target.value)}
+              placeholder="e.g. Troxler Electronic Labs"
             />
           </div>
           <div className="space-y-2">
             <Label>
-              Serial #
+              Calibration due date
               <span className="text-muted-foreground font-normal ml-1.5">
                 Optional
               </span>
             </Label>
             <Input
-              value={serialNumber}
-              onChange={(e) => setSerialNumber(e.target.value)}
-              placeholder="e.g. SN-12345"
+              type="date"
+              value={calibrationDueDate}
+              onChange={(e) => setCalibrationDueDate(e.target.value)}
             />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label>
-            Manufacturer
-            <span className="text-muted-foreground font-normal ml-1.5">
-              Optional
-            </span>
-          </Label>
-          <Input
-            value={manufacturer}
-            onChange={(e) => setManufacturer(e.target.value)}
-            placeholder="e.g. Troxler Electronic Labs"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>
-            Calibration due date
-            <span className="text-muted-foreground font-normal ml-1.5">
-              Optional
-            </span>
-          </Label>
-          <Input
-            type="date"
-            value={calibrationDueDate}
-            onChange={(e) => setCalibrationDueDate(e.target.value)}
-          />
-        </div>
-        {type === "nuclear_gauge" && (
+          {type === "nuclear_gauge" && (
+            <div className="space-y-2">
+              <Label>
+                NRC License #
+                <span className="text-muted-foreground font-normal ml-1.5">
+                  Optional
+                </span>
+              </Label>
+              <Input
+                value={nrcLicenseNumber}
+                onChange={(e) => setNrcLicenseNumber(e.target.value)}
+                placeholder="e.g. 37-XXXXX-XX"
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label>
-              NRC License #
+              Notes
               <span className="text-muted-foreground font-normal ml-1.5">
                 Optional
               </span>
             </Label>
-            <Input
-              value={nrcLicenseNumber}
-              onChange={(e) => setNrcLicenseNumber(e.target.value)}
-              placeholder="e.g. 37-XXXXX-XX"
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Internal notes about this equipment..."
+              rows={2}
+              className="resize-none"
             />
           </div>
-        )}
-        <div className="space-y-2">
-          <Label>
-            Notes
-            <span className="text-muted-foreground font-normal ml-1.5">
-              Optional
-            </span>
-          </Label>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Internal notes about this equipment..."
-            rows={2}
-            className="resize-none"
-          />
-        </div>
-      </form>
+        </DialogBody>
 
-      {/* Footer */}
-      <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
-        <DialogClose asChild>
-          <Button variant="outline">Cancel</Button>
-        </DialogClose>
-        <Button
-          type="submit"
-          form="create-equipment-form"
-          disabled={submitting}
-          className="min-w-[140px]"
-        >
-          <Wrench className="size-4 mr-1.5" />
-          {submitting ? "Adding..." : "Add equipment"}
-        </Button>
-      </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="min-w-[140px]"
+          >
+            <Wrench className="size-4 mr-1.5" />
+            {submitting ? "Adding..." : "Add equipment"}
+          </Button>
+        </DialogFooter>
+      </form>
     </DialogContent>
   );
 }

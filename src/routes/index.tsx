@@ -1,7 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
-  Mountain,
   ArrowRight,
   FlaskConical,
   ClipboardCheck,
@@ -16,6 +15,7 @@ import {
   Clock,
   FileText,
 } from "lucide-react";
+import { BedrockLogo, BedrockMark } from "@/components/logo";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -114,14 +114,8 @@ function LandingPage() {
       <div className="relative z-10 flex flex-col min-h-screen">
         {/* ── Nav ────────────────────────────────────────── */}
         <header className="flex items-center justify-between px-6 sm:px-10 lg:px-16 py-5 max-w-7xl mx-auto w-full">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center size-9 rounded-lg bg-primary text-primary-foreground">
-              <Mountain className="size-4" />
-            </div>
-            <span className="font-heading text-lg font-bold tracking-tight">
-              Bedrock
-            </span>
-          </div>
+          <BedrockLogo variant="dark" size="lg" />
+
           <Button asChild variant="ghost" size="sm">
             <Link to="/sign-in">Sign in</Link>
           </Button>
@@ -306,8 +300,8 @@ function LandingPage() {
         <footer className="mt-auto border-t border-border/60">
           <div className="px-6 sm:px-10 lg:px-16 py-6 max-w-7xl mx-auto w-full">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Mountain className="size-3" />
+              <div className="flex items-center gap-1.5">
+                <BedrockMark className="size-3" />
                 <span>Bedrock by Building &amp; Earth Sciences</span>
               </div>
               <span>&copy; {new Date().getFullYear()}</span>

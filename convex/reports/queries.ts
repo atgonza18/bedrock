@@ -1,7 +1,7 @@
 import { v, ConvexError } from "convex/values";
 import { query } from "../_generated/server";
 import { Id, Doc } from "../_generated/dataModel";
-import { requireMember, requireRole, requireInternal, requireProjectAccess, orgScoped } from "../lib/auth";
+import { requireMember, requireRole, requireInternal, requirePermission, requireProjectAccess, orgScoped } from "../lib/auth";
 
 // ---------- List queries ----------
 
@@ -20,14 +20,26 @@ export const listByProject = query({
       .order("desc")
       .take(200);
 
-    // Resolve creator names for the list view.
+    // Resolve creator names (and custom template names) for the list view.
     const result = [];
     for (const r of reports) {
       const creator = await ctx.db
         .query("userProfiles")
         .withIndex("by_userId", (q) => q.eq("userId", r.createdByUserId))
         .unique();
-      result.push({ ...r, creatorName: creator?.fullName ?? "Unknown" });
+      let templateName: string | null = null;
+      if (r.kind === "custom") {
+        const response = await ctx.db.get(
+          "customTestResponses",
+          r.detailId as Id<"customTestResponses">,
+        );
+        templateName = response?.templateNameAtCreation ?? null;
+      }
+      result.push({
+        ...r,
+        creatorName: creator?.fullName ?? "Unknown",
+        templateName,
+      });
     }
     return result;
   },
@@ -50,7 +62,19 @@ export const listMyReports = query({
     const result = [];
     for (const r of reports) {
       const project = await ctx.db.get("projects", r.projectId);
-      result.push({ ...r, projectName: project?.name ?? "Unknown" });
+      let templateName: string | null = null;
+      if (r.kind === "custom") {
+        const response = await ctx.db.get(
+          "customTestResponses",
+          r.detailId as Id<"customTestResponses">,
+        );
+        templateName = response?.templateNameAtCreation ?? null;
+      }
+      result.push({
+        ...r,
+        projectName: project?.name ?? "Unknown",
+        templateName,
+      });
     }
     return result;
   },
@@ -87,7 +111,19 @@ export const listMyDrafts = query({
     const result = [];
     for (const r of all) {
       const project = await ctx.db.get("projects", r.projectId);
-      result.push({ ...r, projectName: project?.name ?? "Unknown" });
+      let templateName: string | null = null;
+      if (r.kind === "custom") {
+        const response = await ctx.db.get(
+          "customTestResponses",
+          r.detailId as Id<"customTestResponses">,
+        );
+        templateName = response?.templateNameAtCreation ?? null;
+      }
+      result.push({
+        ...r,
+        projectName: project?.name ?? "Unknown",
+        templateName,
+      });
     }
     return result;
   },
@@ -122,7 +158,19 @@ export const listDailyLog = query({
     const result = [];
     for (const r of dayReports) {
       const project = await ctx.db.get("projects", r.projectId);
-      result.push({ ...r, projectName: project?.name ?? "Unknown" });
+      let templateName: string | null = null;
+      if (r.kind === "custom") {
+        const response = await ctx.db.get(
+          "customTestResponses",
+          r.detailId as Id<"customTestResponses">,
+        );
+        templateName = response?.templateNameAtCreation ?? null;
+      }
+      result.push({
+        ...r,
+        projectName: project?.name ?? "Unknown",
+        templateName,
+      });
     }
     return result;
   },
@@ -186,6 +234,35 @@ export const getById = query({
       detail = await ctx.db.get("dcpTests", report.detailId as Id<"dcpTests">);
     } else if (report.kind === "pile_load") {
       detail = await ctx.db.get("pileLoadTests", report.detailId as Id<"pileLoadTests">);
+    } else if (report.kind === "custom") {
+      const response = await ctx.db.get(
+        "customTestResponses",
+        report.detailId as Id<"customTestResponses">,
+      );
+      if (response) {
+        // Resolve photo URLs for every photo field so the FE can render inline.
+        // We scan the values for any `storageIds` arrays and map each to a URL.
+        let parsed: Record<string, unknown> = {};
+        try {
+          parsed = JSON.parse(response.valuesJson || "{}");
+        } catch {
+          parsed = {};
+        }
+        const photoUrls: Record<string, Array<{ storageId: string; url: string | null }>> = {};
+        for (const [fieldId, rawValue] of Object.entries(parsed)) {
+          const value = rawValue as { kind?: string; storageIds?: unknown };
+          if (value?.kind === "photo" && Array.isArray(value.storageIds)) {
+            const resolved = [];
+            for (const sid of value.storageIds) {
+              if (typeof sid !== "string") continue;
+              const url = await ctx.storage.getUrl(sid as Id<"_storage">);
+              resolved.push({ storageId: sid, url });
+            }
+            photoUrls[fieldId] = resolved;
+          }
+        }
+        detail = { ...response, photoUrls };
+      }
     }
 
     // Cylinders (concrete only).
@@ -335,11 +412,11 @@ export const getById = query({
 
 // ---------- Review queue query (M4) ----------
 
-/** Reports awaiting review (submitted + in_review). PM/admin only. */
+/** Reports awaiting review (submitted + in_review). Gated on canApproveReports. */
 export const listReviewQueue = query({
   args: {},
   handler: async (ctx) => {
-    const { org } = await requireRole(ctx, ["pm", "admin"]);
+    const { org } = await requirePermission(ctx, "canApproveReports");
 
     const submitted = await ctx.db
       .query("reports")
@@ -374,11 +451,20 @@ export const listReviewQueue = query({
           .unique();
         reviewerName = reviewer?.fullName ?? null;
       }
+      let templateName: string | null = null;
+      if (r.kind === "custom") {
+        const response = await ctx.db.get(
+          "customTestResponses",
+          r.detailId as Id<"customTestResponses">,
+        );
+        templateName = response?.templateNameAtCreation ?? null;
+      }
       result.push({
         ...r,
         projectName: project?.name ?? "Unknown",
         creatorName: creator?.fullName ?? "Unknown",
         reviewerName,
+        templateName,
       });
     }
     return result;
@@ -433,6 +519,14 @@ export const listForClient = query({
         if (r.pdfStorageId) {
           pdfUrl = await ctx.storage.getUrl(r.pdfStorageId);
         }
+        let templateName: string | null = null;
+        if (r.kind === "custom") {
+          const response = await ctx.db.get(
+            "customTestResponses",
+            r.detailId as Id<"customTestResponses">,
+          );
+          templateName = response?.templateNameAtCreation ?? null;
+        }
         result.push({
           _id: r._id,
           kind: r.kind,
@@ -445,6 +539,7 @@ export const listForClient = query({
           projectName: project.name,
           projectId: project._id,
           jobNumber: project.jobNumber,
+          templateName,
         });
       }
     }
@@ -457,28 +552,86 @@ export const listForClient = query({
 
 // ---------- Admin executive dashboard stats ----------
 
-/** Ops metrics for the admin dashboard. Returns volume, turnaround, queue depth, and rejection rate. */
+/**
+ * Org-wide audit log for compliance / history review. Admin only.
+ * Returns the most recent 200 events with joined actor names + report
+ * numbers for display.
+ */
+export const listOrgAuditLog = query({
+  args: {},
+  handler: async (ctx) => {
+    const { org } = await requireRole(ctx, ["admin"]);
+    const entries = await ctx.db
+      .query("reportAuditLog")
+      .withIndex("by_org_and_at", (q) => q.eq("orgId", org._id))
+      .order("desc")
+      .take(200);
+
+    const out = [];
+    for (const e of entries) {
+      const actor = e.actorUserId
+        ? await ctx.db
+            .query("userProfiles")
+            .withIndex("by_userId", (q) =>
+              q.eq("userId", e.actorUserId as Id<"users">),
+            )
+            .unique()
+        : null;
+      const report = await ctx.db.get("reports", e.reportId);
+      let templateName: string | null = null;
+      if (report?.kind === "custom") {
+        const response = await ctx.db.get(
+          "customTestResponses",
+          report.detailId as Id<"customTestResponses">,
+        );
+        templateName = response?.templateNameAtCreation ?? null;
+      }
+      out.push({
+        _id: e._id,
+        at: e.at,
+        event: e.event,
+        actorName: actor?.fullName ?? e.actorLabel ?? "System",
+        reportId: e.reportId,
+        reportNumber: report?.number ?? "—",
+        reportKind: report?.kind ?? "",
+        reportTemplateName: templateName,
+        metadata: e.metadata,
+      });
+    }
+    return out;
+  },
+});
+
+/** Ops metrics for the admin dashboard. Returns volume, turnaround, queue depth, rejection rate, prior-period deltas, and a 7×24 hour-of-week delivery heatmap. */
 export const getAdminDashboardStats = query({
   args: {},
   handler: async (ctx) => {
     const { org } = await requireRole(ctx, ["admin"]);
     const now = Date.now();
-    const windowStart = now - 30 * 24 * 60 * 60 * 1000;
+    const WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+    const windowStart = now - WINDOW_MS;
+    const priorWindowStart = now - 2 * WINDOW_MS;
 
-    // 1. Delivered reports in the last 30 days
+    // 1. Delivered reports — fetch enough to cover both windows (~60 days worth).
     const delivered = await ctx.db
       .query("reports")
       .withIndex("by_org_and_status", (q) =>
         q.eq("orgId", org._id).eq("status", "delivered"),
       )
       .order("desc")
-      .take(500);
+      .take(1000);
 
     const recentDelivered = delivered.filter(
       (r) => r.deliveredAt && r.deliveredAt >= windowStart,
     );
+    const priorDelivered = delivered.filter(
+      (r) =>
+        r.deliveredAt &&
+        r.deliveredAt >= priorWindowStart &&
+        r.deliveredAt < windowStart,
+    );
 
-    // Group by kind + compute turnaround
+    // Group by kind + compute turnaround for the current window
     const kindCounts: Record<string, number> = {};
     let totalTurnaround = 0;
     let turnaroundCount = 0;
@@ -500,7 +653,37 @@ export const getAdminDashboardStats = query({
         ? Math.round((totalTurnaround / turnaroundCount / (1000 * 60 * 60)) * 10) / 10
         : null;
 
-    // 2. Review queue depth
+    // Prior-period turnaround (for delta comparison)
+    let priorTurnaround = 0;
+    let priorTurnaroundCount = 0;
+    for (const r of priorDelivered) {
+      if (r.deliveredAt && r.fieldDate) {
+        priorTurnaround += r.deliveredAt - r.fieldDate;
+        priorTurnaroundCount++;
+      }
+    }
+    const prevAvgTurnaroundHours =
+      priorTurnaroundCount > 0
+        ? Math.round((priorTurnaround / priorTurnaroundCount / (1000 * 60 * 60)) * 10) / 10
+        : null;
+
+    // 2. Heatmap: 7 rows (0=Sunday .. 6=Saturday) × 24 hours, cell = delivery count
+    const heatmapCells: number[][] = Array.from({ length: 7 }, () =>
+      Array(24).fill(0),
+    );
+    let heatmapMax = 0;
+    for (const r of recentDelivered) {
+      if (!r.deliveredAt) continue;
+      const d = new Date(r.deliveredAt);
+      const day = d.getDay(); // 0–6
+      const hour = d.getHours(); // 0–23
+      heatmapCells[day][hour] += 1;
+      if (heatmapCells[day][hour] > heatmapMax) {
+        heatmapMax = heatmapCells[day][hour];
+      }
+    }
+
+    // 3. Review queue depth
     const submitted = await ctx.db
       .query("reports")
       .withIndex("by_org_and_status", (q) =>
@@ -515,34 +698,49 @@ export const getAdminDashboardStats = query({
       )
       .take(200);
 
-    // 3. Rejection rate from audit log (last 30 days)
+    // 4. Rejection rate from audit log — current window + prior window
     const recentAudit = await ctx.db
       .query("reportAuditLog")
       .withIndex("by_org_and_at", (q) => q.eq("orgId", org._id))
       .order("desc")
-      .take(1000);
+      .take(2000);
 
     let rejectedCount = 0;
     let approvedCount = 0;
+    let priorRejectedCount = 0;
+    let priorApprovedCount = 0;
     for (const e of recentAudit) {
-      if (e.at < windowStart) break;
-      if (e.event === "rejected") rejectedCount++;
-      if (e.event === "approved") approvedCount++;
+      if (e.at < priorWindowStart) break;
+      if (e.at >= windowStart) {
+        if (e.event === "rejected") rejectedCount++;
+        if (e.event === "approved") approvedCount++;
+      } else {
+        if (e.event === "rejected") priorRejectedCount++;
+        if (e.event === "approved") priorApprovedCount++;
+      }
     }
     const totalDecisions = rejectedCount + approvedCount;
+    const priorTotalDecisions = priorRejectedCount + priorApprovedCount;
 
     return {
       windowStart,
       windowEnd: now,
       deliveredCount: recentDelivered.length,
+      prevDeliveredCount: priorDelivered.length,
       deliveredByKind,
       avgTurnaroundHours,
+      prevAvgTurnaroundHours,
+      heatmap: { cells: heatmapCells, max: heatmapMax },
       queueDepth: submitted.length + inReview.length,
       submittedCount: submitted.length,
       inReviewCount: inReview.length,
       rejectionRate:
         totalDecisions > 0
           ? Math.round((rejectedCount / totalDecisions) * 1000) / 10
+          : null,
+      prevRejectionRate:
+        priorTotalDecisions > 0
+          ? Math.round((priorRejectedCount / priorTotalDecisions) * 1000) / 10
           : null,
       rejectedCount,
       approvedCount,

@@ -14,8 +14,13 @@ import {
 } from "@/components/ui/card";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogEyebrow,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -186,43 +191,17 @@ function CreateCertificationDialog({ onSuccess }: { onSuccess: () => void }) {
   const [submitting, setSubmitting] = useState(false);
 
   return (
-    <DialogContent
-      className="sm:max-w-md gap-0 p-0 overflow-hidden"
-      showCloseButton={false}
-    >
-      {/* Accent header */}
-      <div className="bg-gradient-to-b from-teal-50 to-transparent dark:from-teal-950/40 dark:to-transparent px-5 pt-5 pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center shrink-0 mt-0.5">
-              <Award className="size-4 text-teal-600 dark:text-teal-400" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-semibold">
-                Add a certification
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Record a technician&rsquo;s professional certification.
-              </p>
-            </div>
-          </div>
-          <DialogClose asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground"
-            >
-              <XIcon className="size-4" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </DialogClose>
-        </div>
-      </div>
+    <DialogContent>
+      <DialogHeader>
+        <DialogEyebrow>New certification</DialogEyebrow>
+        <DialogTitle>Add a certification</DialogTitle>
+        <DialogDescription>
+          Record a technician&rsquo;s professional certification.
+        </DialogDescription>
+      </DialogHeader>
 
-      {/* Form */}
       <form
         id="create-certification-form"
-        className="px-5 py-4 space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (!userId) return;
@@ -259,123 +238,123 @@ function CreateCertificationDialog({ onSuccess }: { onSuccess: () => void }) {
             .finally(() => setSubmitting(false));
         }}
       >
-        <div className="space-y-2">
-          <Label>Technician</Label>
-          <Select value={userId} onValueChange={setUserId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a team member" />
-            </SelectTrigger>
-            <SelectContent>
-              {members?.map((m) => (
-                <SelectItem
-                  key={m.membership.userId}
-                  value={m.membership.userId}
-                >
-                  {m.profile?.fullName ?? m.email ?? "Unknown"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Type</Label>
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(CERT_TYPE_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {type === "other" && (
+        <DialogBody className="space-y-4">
           <div className="space-y-2">
-            <Label>Custom label</Label>
-            <Input
-              value={customLabel}
-              onChange={(e) => setCustomLabel(e.target.value)}
-              placeholder="e.g. OSHA 30-Hour"
-              required
-            />
+            <Label>Technician</Label>
+            <Select value={userId} onValueChange={setUserId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a team member" />
+              </SelectTrigger>
+              <SelectContent>
+                {members?.map((m) => (
+                  <SelectItem
+                    key={m.membership.userId}
+                    value={m.membership.userId}
+                  >
+                    {m.profile?.fullName ?? m.email ?? "Unknown"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
-        <div className="space-y-2">
-          <Label>
-            Cert #
-            <span className="text-muted-foreground font-normal ml-1.5">
-              Optional
-            </span>
-          </Label>
-          <Input
-            value={certificationNumber}
-            onChange={(e) => setCertificationNumber(e.target.value)}
-            placeholder="e.g. 01-12345"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(CERT_TYPE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {type === "other" && (
+            <div className="space-y-2">
+              <Label>Custom label</Label>
+              <Input
+                value={customLabel}
+                onChange={(e) => setCustomLabel(e.target.value)}
+                placeholder="e.g. OSHA 30-Hour"
+                required
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label>
-              Issued date
+              Cert #
               <span className="text-muted-foreground font-normal ml-1.5">
                 Optional
               </span>
             </Label>
             <Input
-              type="date"
-              value={issuedAt}
-              onChange={(e) => setIssuedAt(e.target.value)}
+              value={certificationNumber}
+              onChange={(e) => setCertificationNumber(e.target.value)}
+              placeholder="e.g. 01-12345"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>
+                Issued date
+                <span className="text-muted-foreground font-normal ml-1.5">
+                  Optional
+                </span>
+              </Label>
+              <Input
+                type="date"
+                value={issuedAt}
+                onChange={(e) => setIssuedAt(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>
+                Expiry date
+                <span className="text-muted-foreground font-normal ml-1.5">
+                  Optional
+                </span>
+              </Label>
+              <Input
+                type="date"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label>
-              Expiry date
+              Notes
               <span className="text-muted-foreground font-normal ml-1.5">
                 Optional
               </span>
             </Label>
-            <Input
-              type="date"
-              value={expiresAt}
-              onChange={(e) => setExpiresAt(e.target.value)}
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Additional notes..."
+              rows={2}
+              className="resize-none"
             />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label>
-            Notes
-            <span className="text-muted-foreground font-normal ml-1.5">
-              Optional
-            </span>
-          </Label>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Additional notes..."
-            rows={2}
-            className="resize-none"
-          />
-        </div>
-      </form>
+        </DialogBody>
 
-      {/* Footer */}
-      <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
-        <DialogClose asChild>
-          <Button variant="outline">Cancel</Button>
-        </DialogClose>
-        <Button
-          type="submit"
-          form="create-certification-form"
-          disabled={submitting || !userId}
-          className="min-w-[150px]"
-        >
-          <Award className="size-4 mr-1.5" />
-          {submitting ? "Adding..." : "Add certification"}
-        </Button>
-      </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button
+            type="submit"
+            disabled={submitting || !userId}
+            className="min-w-[150px]"
+          >
+            <Award className="size-4 mr-1.5" />
+            {submitting ? "Adding..." : "Add certification"}
+          </Button>
+        </DialogFooter>
+      </form>
     </DialogContent>
   );
 }

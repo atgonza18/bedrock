@@ -8,6 +8,7 @@ import { NuclearDensityContent } from "./templates/NuclearDensityTemplate";
 import { ProofRollContent } from "./templates/ProofRollTemplate";
 import { DcpContent } from "./templates/DcpTemplate";
 import { PileLoadContent } from "./templates/PileLoadTemplate";
+import { CustomTestContent } from "./templates/CustomTestTemplate";
 
 /**
  * The data bundle passed to the PDF renderer. Assembled by the
@@ -49,6 +50,8 @@ export type DeliveryBundle = {
   pileTypeInfo?: { name: string; color: string } | null;
   portalUrl?: string | null;
   photoUrls?: { fileName: string; url: string }[];
+  /** storageId → signed URL for photos embedded in custom test responses. */
+  customPhotoUrls?: Record<string, string>;
 };
 
 /** Convert null to undefined for props. */
@@ -131,6 +134,18 @@ export async function renderReportPdf(
         stationTo={n2u(bundle.report.stationTo)}
         pileTypeInfo={bundle.pileTypeInfo}
         specZone={bundle.specZone}
+      />
+    );
+  } else if (bundle.report.kind === "custom") {
+    content = (
+      <CustomTestContent
+        detail={bundle.detail ?? {}}
+        weather={bundle.report.weather ?? undefined}
+        locationNote={n2u(bundle.report.locationNote)}
+        stationFrom={n2u(bundle.report.stationFrom)}
+        stationTo={n2u(bundle.report.stationTo)}
+        specZone={bundle.specZone}
+        customPhotoUrls={bundle.customPhotoUrls}
       />
     );
   } else {

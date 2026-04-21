@@ -19,8 +19,12 @@ import {
 } from "@/components/ui/select";
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
+  DialogDescription,
+  DialogEyebrow,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useSetBreadcrumbs } from "@/components/layout/breadcrumb-context";
@@ -32,7 +36,6 @@ import {
   Clock,
   CheckCircle2,
   CalendarDays,
-  XIcon,
   Hammer,
 } from "lucide-react";
 
@@ -362,43 +365,18 @@ function BreakDialog({
 
   return (
     <Dialog open={item !== null} onOpenChange={() => onClose()}>
-      <DialogContent
-        className="sm:max-w-md gap-0 p-0 overflow-hidden"
-        showCloseButton={false}
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-b from-blue-50 to-transparent dark:from-blue-950/40 dark:to-transparent px-5 pt-5 pb-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <div className="size-9 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0 mt-0.5">
-                <Hammer className="size-4 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <DialogTitle className="text-base font-semibold">
-                  Record cylinder break
-                </DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {item
-                    ? `${item.reportNumber} — ${item.set.setLabel} / ${item.cylinder.cylinderNumber} (${item.cylinder.breakAgeDays}-day)`
-                    : ""}
-                </p>
-              </div>
-            </div>
-            <DialogClose asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground"
-              >
-                <XIcon className="size-4" />
-                <span className="sr-only">Close</span>
-              </Button>
-            </DialogClose>
-          </div>
-        </div>
+      <DialogContent>
+        <DialogHeader>
+          <DialogEyebrow>Lab break</DialogEyebrow>
+          <DialogTitle>Record cylinder break</DialogTitle>
+          <DialogDescription>
+            {item
+              ? `${item.reportNumber} — ${item.set.setLabel} / ${item.cylinder.cylinderNumber} (${item.cylinder.breakAgeDays}-day)`
+              : ""}
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Form */}
-        <div className="px-5 py-4 space-y-4">
+        <DialogBody className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-sm font-medium">Max load (lbs)</Label>
@@ -470,11 +448,10 @@ function BreakDialog({
               className="resize-none"
             />
           </div>
-        </div>
+        </DialogBody>
 
-        {/* Footer */}
-        <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
           <Button
@@ -485,7 +462,7 @@ function BreakDialog({
             <CheckCircle2 className="size-4 mr-1.5" />
             {submitting ? "Recording..." : "Record break"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

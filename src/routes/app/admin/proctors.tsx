@@ -13,8 +13,13 @@ import {
 } from "@/components/ui/card";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogEyebrow,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -135,34 +140,17 @@ function CreateProctorDialog({ onSuccess }: { onSuccess: () => void }) {
   const [submitting, setSubmitting] = useState(false);
 
   return (
-    <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden" showCloseButton={false}>
-      {/* Accent header */}
-      <div className="bg-gradient-to-b from-violet-50 to-transparent dark:from-violet-950/40 dark:to-transparent px-5 pt-5 pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center shrink-0 mt-0.5">
-              <Layers className="size-4 text-violet-600 dark:text-violet-400" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-semibold">Add a proctor curve</DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Lab-determined density and moisture for a soil type.
-              </p>
-            </div>
-          </div>
-          <DialogClose asChild>
-            <Button variant="ghost" size="icon-sm" className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground">
-              <XIcon className="size-4" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </DialogClose>
-        </div>
-      </div>
+    <DialogContent>
+      <DialogHeader>
+        <DialogEyebrow>New proctor</DialogEyebrow>
+        <DialogTitle>Add a proctor curve</DialogTitle>
+        <DialogDescription>
+          Lab-determined density and moisture for a soil type.
+        </DialogDescription>
+      </DialogHeader>
 
-      {/* Form */}
       <form
         id="create-proctor-form"
-        className="px-5 py-4 space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           setSubmitting(true);
@@ -182,65 +170,65 @@ function CreateProctorDialog({ onSuccess }: { onSuccess: () => void }) {
             .finally(() => setSubmitting(false));
         }}
       >
-        <div className="space-y-2">
-          <Label>Label</Label>
-          <Input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="e.g. Modified Proctor - CL Soil"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Material description</Label>
-          <Input
-            value={materialDescription}
-            onChange={(e) => setMaterialDescription(e.target.value)}
-            placeholder="e.g. Brown sandy clay (CL)"
-            required
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
+        <DialogBody className="space-y-4">
           <div className="space-y-2">
-            <Label>Max dry density (pcf)</Label>
+            <Label>Label</Label>
             <Input
-              type="number"
-              step="any"
-              value={maxDryDensityPcf}
-              onChange={(e) => setMaxDryDensityPcf(e.target.value)}
-              placeholder="e.g. 112.5"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. Modified Proctor - CL Soil"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label>Optimum moisture (%)</Label>
+            <Label>Material description</Label>
             <Input
-              type="number"
-              step="any"
-              value={optimumMoisturePct}
-              onChange={(e) => setOptimumMoisturePct(e.target.value)}
-              placeholder="e.g. 14.2"
+              value={materialDescription}
+              onChange={(e) => setMaterialDescription(e.target.value)}
+              placeholder="e.g. Brown sandy clay (CL)"
               required
             />
           </div>
-        </div>
-      </form>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Max dry density (pcf)</Label>
+              <Input
+                type="number"
+                step="any"
+                value={maxDryDensityPcf}
+                onChange={(e) => setMaxDryDensityPcf(e.target.value)}
+                placeholder="e.g. 112.5"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Optimum moisture (%)</Label>
+              <Input
+                type="number"
+                step="any"
+                value={optimumMoisturePct}
+                onChange={(e) => setOptimumMoisturePct(e.target.value)}
+                placeholder="e.g. 14.2"
+                required
+              />
+            </div>
+          </div>
+        </DialogBody>
 
-      {/* Footer */}
-      <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
-        <DialogClose asChild>
-          <Button variant="outline">Cancel</Button>
-        </DialogClose>
-        <Button
-          type="submit"
-          form="create-proctor-form"
-          disabled={submitting}
-          className="min-w-[130px]"
-        >
-          <Layers className="size-4 mr-1.5" />
-          {submitting ? "Adding..." : "Add proctor"}
-        </Button>
-      </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="min-w-[130px]"
+          >
+            <Layers className="size-4 mr-1.5" />
+            {submitting ? "Adding..." : "Add proctor"}
+          </Button>
+        </DialogFooter>
+      </form>
     </DialogContent>
   );
 }

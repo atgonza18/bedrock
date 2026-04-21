@@ -15,8 +15,13 @@ import {
 } from "@/components/ui/card";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogEyebrow,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -38,7 +43,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, X, Mail, XIcon } from "lucide-react";
+import { Plus, X, Mail, ShieldCheck, RotateCcw } from "lucide-react";
+import type { Id } from "../../../../convex/_generated/dataModel";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/admin/users")({
   component: AdminUsersPage,
@@ -87,6 +94,7 @@ function MembersSection() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Permissions</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -112,10 +120,19 @@ function MembersSection() {
                           value={m.membership.role}
                           onValueChange={(v) => handleRoleChange(m.membership._id, v)}
                         >
-                          <SelectTrigger className="h-7 w-[110px] text-xs">
+                          <SelectTrigger
+                            className={cn(
+                              "h-8 w-[116px] rounded-sm border-transparent bg-transparent px-2.5 text-xs font-medium capitalize shadow-none",
+                              "hover:bg-muted/60 hover:border-border/60",
+                              "dark:bg-transparent dark:hover:bg-muted/40 dark:hover:border-border/50",
+                              "focus-visible:border-ring focus-visible:bg-background",
+                              "data-[state=open]:bg-muted/70 data-[state=open]:border-border dark:data-[state=open]:bg-muted/50",
+                              "[&_svg]:text-muted-foreground/60",
+                            )}
+                          >
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="min-w-[var(--radix-select-trigger-width)] rounded-sm">
                             <SelectItem value="admin">Admin</SelectItem>
                             <SelectItem value="pm">PM</SelectItem>
                             <SelectItem value="tech">Tech</SelectItem>
@@ -123,6 +140,12 @@ function MembersSection() {
                           </SelectContent>
                         </Select>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <PermissionsCell
+                        membership={m.membership}
+                        isSelf={isSelf}
+                      />
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -249,34 +272,17 @@ function InviteDialogContent({ onSuccess }: { onSuccess: () => void }) {
   const [submitting, setSubmitting] = useState(false);
 
   return (
-    <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden" showCloseButton={false}>
-      {/* Accent header */}
-      <div className="bg-gradient-to-b from-teal-50 to-transparent dark:from-teal-950/40 dark:to-transparent px-5 pt-5 pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center shrink-0 mt-0.5">
-              <Mail className="size-4 text-teal-600 dark:text-teal-400" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-semibold">Invite a team member</DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                They'll be able to join by signing up with this email.
-              </p>
-            </div>
-          </div>
-          <DialogClose asChild>
-            <Button variant="ghost" size="icon-sm" className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground">
-              <XIcon className="size-4" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </DialogClose>
-        </div>
-      </div>
+    <DialogContent>
+      <DialogHeader>
+        <DialogEyebrow>Invitation</DialogEyebrow>
+        <DialogTitle>Invite a team member</DialogTitle>
+        <DialogDescription>
+          They'll be able to join by signing up with this email.
+        </DialogDescription>
+      </DialogHeader>
 
-      {/* Form */}
       <form
         id="invite-member-form"
-        className="px-5 py-4 space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           setSubmitting(true);
@@ -290,78 +296,376 @@ function InviteDialogContent({ onSuccess }: { onSuccess: () => void }) {
             .finally(() => setSubmitting(false));
         }}
       >
-        <div className="space-y-2">
-          <Label htmlFor="inv-name">Full name</Label>
-          <Input
-            id="inv-name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="Jane Smith"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="inv-email">Email</Label>
-          <Input
-            id="inv-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="jane@company.com"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Role</Label>
-          <Select value={selectedRole} onValueChange={(v) => { setSelectedRole(v); if (v !== "client") setSelectedClientId(""); }}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tech">Tech</SelectItem>
-              <SelectItem value="pm">PM</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="client">Client</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        {selectedRole === "client" && (
+        <DialogBody className="space-y-4">
           <div className="space-y-2">
-            <Label>Client company</Label>
-            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+            <Label htmlFor="inv-name">Full name</Label>
+            <Input
+              id="inv-name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Jane Smith"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="inv-email">Email</Label>
+            <Input
+              id="inv-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="jane@company.com"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Role</Label>
+            <Select value={selectedRole} onValueChange={(v) => { setSelectedRole(v); if (v !== "client") setSelectedClientId(""); }}>
               <SelectTrigger>
-                <SelectValue placeholder="Select company..." />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {clients?.map((c) => (
-                  <SelectItem key={c._id} value={c._id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="tech">Tech</SelectItem>
+                <SelectItem value="pm">PM</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="client">Client</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              This links the user to the right projects and reports.
-            </p>
           </div>
-        )}
-      </form>
+          {selectedRole === "client" && (
+            <div className="space-y-2">
+              <Label>Client company</Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select company..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients?.map((c) => (
+                    <SelectItem key={c._id} value={c._id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                This links the user to the right projects and reports.
+              </p>
+            </div>
+          )}
+        </DialogBody>
 
-      {/* Footer */}
-      <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="min-w-[140px]"
+          >
+            <Mail className="size-4 mr-1.5" />
+            {submitting ? "Sending..." : "Send invitation"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  );
+}
+
+// ─── Per-user permission overrides ─────────────────────────────────────────
+
+type PermissionKey =
+  | "canViewAllProjects"
+  | "canManageTeam"
+  | "canViewAllocation"
+  | "canApproveReports";
+
+const PERMISSION_META: {
+  key: PermissionKey;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    key: "canViewAllProjects",
+    label: "See all projects",
+    hint: "View every project in the org, not just ones they're assigned to.",
+  },
+  {
+    key: "canManageTeam",
+    label: "Manage project team",
+    hint: "Add and remove techs / PMs from any project they can see.",
+  },
+  {
+    key: "canViewAllocation",
+    label: "View allocation page",
+    hint: "Access the org-wide Allocation roster and reassign people.",
+  },
+  {
+    key: "canApproveReports",
+    label: "Approve / reject reports",
+    hint: "Access the Review Queue and approve or reject submitted reports.",
+  },
+];
+
+type MembershipDoc = {
+  _id: Id<"orgMemberships">;
+  role: "admin" | "pm" | "tech" | "client";
+  canViewAllProjects?: boolean;
+  canManageTeam?: boolean;
+  canViewAllocation?: boolean;
+  canApproveReports?: boolean;
+};
+
+/** Mirror of permits() in convex/lib/auth.ts, for admin UI previews. */
+function effectivePermit(m: MembershipDoc, key: PermissionKey): boolean {
+  if (m.role === "admin") return true;
+  if (m.role === "client") return false;
+  const explicit = m[key];
+  if (explicit === true) return true;
+  if (explicit === false) return false;
+  if (key === "canApproveReports" && m.role === "pm") return true;
+  return false;
+}
+
+function PermissionsCell({
+  membership,
+  isSelf,
+}: {
+  membership: MembershipDoc;
+  isSelf: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (membership.role === "admin") {
+    return (
+      <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+        <ShieldCheck className="size-3.5" />
+        Full access
+      </span>
+    );
+  }
+  if (membership.role === "client") {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+  if (isSelf) {
+    return <span className="text-xs text-muted-foreground italic">(cannot edit own)</span>;
+  }
+
+  const explicitCount = PERMISSION_META.filter(
+    (p) => membership[p.key] !== undefined,
+  ).length;
+  const grantedCount = PERMISSION_META.filter((p) =>
+    effectivePermit(membership, p.key),
+  ).length;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 text-xs"
+        onClick={() => setOpen(true)}
+      >
+        {grantedCount === 0
+          ? "Default"
+          : `${grantedCount} granted${explicitCount > 0 ? " · custom" : ""}`}
+      </Button>
+      {open && (
+        <EditPermissionsDialogContent
+          membership={membership}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </Dialog>
+  );
+}
+
+function EditPermissionsDialogContent({
+  membership,
+  onClose,
+}: {
+  membership: MembershipDoc;
+  onClose: () => void;
+}) {
+  const updatePerms = useMutation(api.users.updateMemberPermissions);
+  const [local, setLocal] = useState<
+    Partial<Record<PermissionKey, boolean | null>>
+  >(() => ({
+    canViewAllProjects: membership.canViewAllProjects,
+    canManageTeam: membership.canManageTeam,
+    canViewAllocation: membership.canViewAllocation,
+    canApproveReports: membership.canApproveReports,
+  }));
+  const [saving, setSaving] = useState(false);
+
+  // The effective value — what permits() will actually return after save.
+  const previewMembership: MembershipDoc = {
+    ...membership,
+    canViewAllProjects:
+      local.canViewAllProjects === null
+        ? undefined
+        : local.canViewAllProjects ?? membership.canViewAllProjects,
+    canManageTeam:
+      local.canManageTeam === null
+        ? undefined
+        : local.canManageTeam ?? membership.canManageTeam,
+    canViewAllocation:
+      local.canViewAllocation === null
+        ? undefined
+        : local.canViewAllocation ?? membership.canViewAllocation,
+    canApproveReports:
+      local.canApproveReports === null
+        ? undefined
+        : local.canApproveReports ?? membership.canApproveReports,
+  };
+
+  const toggle = (key: PermissionKey) => {
+    const currentEffective = effectivePermit(previewMembership, key);
+    // Setting explicit opposite of effective.
+    setLocal((s) => ({ ...s, [key]: !currentEffective }));
+  };
+
+  const reset = (key: PermissionKey) => {
+    setLocal((s) => ({ ...s, [key]: null }));
+  };
+
+  const resetAll = () => {
+    setLocal({
+      canViewAllProjects: null,
+      canManageTeam: null,
+      canViewAllocation: null,
+      canApproveReports: null,
+    });
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await updatePerms({
+        membershipId: membership._id,
+        canViewAllProjects: local.canViewAllProjects,
+        canManageTeam: local.canManageTeam,
+        canViewAllocation: local.canViewAllocation,
+        canApproveReports: local.canApproveReports,
+      });
+      toast.success("Permissions updated.");
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <DialogContent className="sm:max-w-lg">
+      <DialogHeader>
+        <DialogEyebrow>Per-user permissions</DialogEyebrow>
+        <DialogTitle>Edit permissions</DialogTitle>
+        <DialogDescription>
+          Toggle individual permissions for this{" "}
+          <span className="font-medium">
+            {membership.role === "pm" ? "PM" : membership.role}
+          </span>
+          . Changes take effect immediately.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody className="space-y-3">
+        {PERMISSION_META.map((p) => {
+          const explicit = local[p.key];
+          const isExplicit = explicit !== undefined && explicit !== null;
+          const effective = effectivePermit(previewMembership, p.key);
+          return (
+            <div
+              key={p.key}
+              className="flex items-start justify-between gap-4 rounded-md border p-3"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium">{p.label}</p>
+                  {isExplicit && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] uppercase tracking-wide"
+                    >
+                      Custom
+                    </Badge>
+                  )}
+                  {!isExplicit && (
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Role default
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">{p.hint}</p>
+                {isExplicit && (
+                  <button
+                    type="button"
+                    className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                    onClick={() => reset(p.key)}
+                  >
+                    <RotateCcw className="size-3" />
+                    Reset to role default
+                  </button>
+                )}
+              </div>
+              <SwitchToggle
+                checked={effective}
+                onClick={() => toggle(p.key)}
+                label={p.label}
+              />
+            </div>
+          );
+        })}
+      </DialogBody>
+      <DialogFooter>
+        <Button type="button" variant="ghost" onClick={resetAll}>
+          <RotateCcw className="size-3.5 mr-1" />
+          Reset all
+        </Button>
         <DialogClose asChild>
-          <Button variant="outline">Cancel</Button>
+          <Button type="button" variant="ghost">
+            Cancel
+          </Button>
         </DialogClose>
         <Button
-          type="submit"
-          form="invite-member-form"
-          disabled={submitting}
-          className="min-w-[140px]"
+          type="button"
+          onClick={() => void save()}
+          disabled={saving}
+          className="min-w-[100px]"
         >
-          <Mail className="size-4 mr-1.5" />
-          {submitting ? "Sending..." : "Send invitation"}
+          {saving ? "Saving…" : "Save"}
         </Button>
-      </div>
+      </DialogFooter>
     </DialogContent>
+  );
+}
+
+function SwitchToggle({
+  checked,
+  onClick,
+  label,
+}: {
+  checked: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-transparent px-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+        checked ? "bg-amber-brand" : "bg-input",
+      )}
+    >
+      <span
+        className={cn(
+          "pointer-events-none block size-4 rounded-full bg-background shadow-sm ring-0 transition-transform",
+          checked ? "translate-x-5" : "translate-x-0",
+        )}
+      />
+    </button>
   );
 }

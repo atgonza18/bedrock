@@ -16,7 +16,7 @@ import { ReportStatusBadge } from "@/features/reports/ReportStatusBadge";
 import { useSetBreadcrumbs } from "@/components/layout/breadcrumb-context";
 import { CalendarDays, FileText, FolderKanban } from "lucide-react";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { KIND_LABELS } from "@/lib/constants";
+import { KIND_LABELS, reportKindLabel } from "@/lib/constants";
 
 export const Route = createFileRoute("/app/daily-log")({
   component: DailyLogPage,
@@ -184,7 +184,7 @@ function DailyLogPage() {
                               variant="outline"
                               className="text-xs capitalize"
                             >
-                              {KIND_LABELS[r.kind as keyof typeof KIND_LABELS] ?? r.kind}
+                              {reportKindLabel(r.kind, r.templateName)}
                             </Badge>
                           </div>
                         </div>

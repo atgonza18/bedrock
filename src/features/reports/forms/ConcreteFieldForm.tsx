@@ -20,6 +20,9 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { SaveIndicator } from "@/components/ui/save-indicator";
+import { useSaveState } from "@/features/reports/useSaveState";
+import { BarcodeScanButton } from "@/components/ui/barcode-scan-button";
 
 type Props = {
   reportId: Id<"reports">;
@@ -38,6 +41,7 @@ export function ConcreteFieldForm({ reportId, report, detail, readOnly }: Props)
   const selectedZone = zones?.find((z) => z._id === report.specZoneId) ?? null;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initializedRef = useRef(false);
+  const { state: saveState, savedAt, track } = useSaveState();
 
   const form = useForm<ConcreteFieldFormValues>({
     resolver: zodResolver(concreteFieldSchema),
@@ -113,7 +117,7 @@ export function ConcreteFieldForm({ reportId, report, detail, readOnly }: Props)
         ? { tempF: toNum(weather.tempF), conditions: weather.conditions || undefined, windMph: toNum(weather.windMph) }
         : undefined;
 
-      void updateDraft({
+      void track(updateDraft({
         reportId,
         fieldDate: dateStrToTs(fieldDate),
         weather: cleanWeather,
@@ -136,9 +140,9 @@ export function ConcreteFieldForm({ reportId, report, detail, readOnly }: Props)
           unitWeightPcf: toNum(detailFields.unitWeightPcf),
           admixtureNotes: detailFields.admixtureNotes || undefined,
         },
-      });
+      }));
     },
-    [reportId, updateDraft, readOnly],
+    [reportId, updateDraft, readOnly, track],
   );
 
   const debouncedSave = useCallback(
@@ -170,6 +174,15 @@ export function ConcreteFieldForm({ reportId, report, detail, readOnly }: Props)
 
   return (
     <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+      {!readOnly && (
+        <div className="flex justify-end -mb-2 sticky top-16 z-20 sm:static sm:top-auto sm:z-auto pointer-events-none">
+          <SaveIndicator
+            state={saveState}
+            savedAt={savedAt}
+            className="pointer-events-auto bg-background/90 backdrop-blur-sm shadow-sm sm:shadow-none sm:bg-transparent sm:backdrop-blur-none"
+          />
+        </div>
+      )}
       {/* Section 1: Site Conditions */}
       <section className="space-y-4">
         <div>
@@ -187,10 +200,10 @@ export function ConcreteFieldForm({ reportId, report, detail, readOnly }: Props)
           <Select
             value={report.specZoneId ?? ""}
             onValueChange={(v) => {
-              void updateDraft({
+              void track(updateDraft({
                 reportId,
                 specZoneId: v as Id<"projectSpecZones">,
-              });
+              }));
             }}
             disabled={disabled}
           >
@@ -253,16 +266,34 @@ export function ConcreteFieldForm({ reportId, report, detail, readOnly }: Props)
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Supplier (ready-mix)" disabled={disabled}>
-            <Input {...form.register("supplier")} />
+            <Input {...form.register("supplier")} autoCapitalize="words" autoCorrect="off" spellCheck={false} />
           </Field>
           <Field label="Mix design #" disabled={disabled}>
-            <Input {...form.register("mixDesignNumber")} />
+            <div className="flex gap-2">
+              <Input {...form.register("mixDesignNumber")} autoCapitalize="characters" autoCorrect="off" spellCheck={false} className="flex-1" />
+              <BarcodeScanButton
+                ariaLabel="Scan mix design"
+                onScan={(val) => form.setValue("mixDesignNumber", val)}
+              />
+            </div>
           </Field>
           <Field label="Ticket #" disabled={disabled}>
-            <Input {...form.register("ticketNumber")} />
+            <div className="flex gap-2">
+              <Input {...form.register("ticketNumber")} autoCapitalize="characters" autoCorrect="off" spellCheck={false} className="flex-1" />
+              <BarcodeScanButton
+                ariaLabel="Scan ticket number"
+                onScan={(val) => form.setValue("ticketNumber", val)}
+              />
+            </div>
           </Field>
           <Field label="Truck #" disabled={disabled}>
-            <Input {...form.register("truckNumber")} />
+            <div className="flex gap-2">
+              <Input {...form.register("truckNumber")} autoCapitalize="characters" autoCorrect="off" spellCheck={false} className="flex-1" />
+              <BarcodeScanButton
+                ariaLabel="Scan truck number"
+                onScan={(val) => form.setValue("truckNumber", val)}
+              />
+            </div>
           </Field>
           <Field label="Design strength (psi)" disabled={disabled}>
             <Input

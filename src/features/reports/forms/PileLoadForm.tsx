@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { SaveIndicator } from "@/components/ui/save-indicator";
+import { useSaveState } from "@/features/reports/useSaveState";
 
 const schema = z.object({
   testMethod: z.enum(["static", "dynamic", "statnamic"]).optional(),
@@ -62,6 +64,7 @@ export function PileLoadForm({ reportId, report, detail, readOnly, renderIncreme
   const selectedZone = zones?.find((z) => z._id === report.specZoneId) ?? null;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initializedRef = useRef(false);
+  const { state: saveState, savedAt, track } = useSaveState();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -125,7 +128,7 @@ export function PileLoadForm({ reportId, report, detail, readOnly, renderIncreme
         ? { tempF: toNum(weather.tempF), conditions: weather.conditions || undefined, windMph: toNum(weather.windMph) }
         : undefined;
 
-      void updateDraft({
+      void track(updateDraft({
         reportId,
         fieldDate: dateStrToTs(fieldDate),
         locationNote: locationNote || undefined,
@@ -147,9 +150,9 @@ export function PileLoadForm({ reportId, report, detail, readOnly, renderIncreme
           failureCriterionNotes: detailFields.failureCriterionNotes || undefined,
           result: detailFields.result || undefined,
         },
-      });
+      }));
     },
-    [reportId, updateDraft, readOnly],
+    [reportId, updateDraft, readOnly, track],
   );
 
   const debouncedSave = useCallback(
@@ -180,6 +183,15 @@ export function PileLoadForm({ reportId, report, detail, readOnly, renderIncreme
 
   return (
     <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+      {!readOnly && (
+        <div className="flex justify-end -mb-2 sticky top-16 z-20 sm:static sm:top-auto sm:z-auto pointer-events-none">
+          <SaveIndicator
+            state={saveState}
+            savedAt={savedAt}
+            className="pointer-events-auto bg-background/90 backdrop-blur-sm shadow-sm sm:shadow-none sm:bg-transparent sm:backdrop-blur-none"
+          />
+        </div>
+      )}
       {/* Section 1: Site Conditions */}
       <section className="space-y-4">
         <h3 className="font-heading text-sm font-semibold text-foreground">
@@ -195,10 +207,10 @@ export function PileLoadForm({ reportId, report, detail, readOnly, renderIncreme
           <Select
             value={report.specZoneId ?? ""}
             onValueChange={(v) => {
-              void updateDraft({
+              void track(updateDraft({
                 reportId,
                 specZoneId: v as Id<"projectSpecZones">,
-              });
+              }));
             }}
             disabled={disabled}
           >

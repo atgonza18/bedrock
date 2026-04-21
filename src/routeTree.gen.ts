@@ -14,14 +14,19 @@ import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as RTokenRouteImport } from './routes/r.$token'
+import { Route as AppProfileRouteImport } from './routes/app/profile'
+import { Route as AppHelpRouteImport } from './routes/app/help'
 import { Route as AppDailyLogRouteImport } from './routes/app/daily-log'
+import { Route as AppAllocationRouteImport } from './routes/app/allocation'
 import { Route as AppAdminRouteRouteImport } from './routes/app/admin/route'
+import { Route as AppTemplatesIndexRouteImport } from './routes/app/templates/index'
 import { Route as AppReportsIndexRouteImport } from './routes/app/reports/index'
 import { Route as AppQueueIndexRouteImport } from './routes/app/queue/index'
 import { Route as AppProjectsIndexRouteImport } from './routes/app/projects/index'
 import { Route as AppLabIndexRouteImport } from './routes/app/lab/index'
 import { Route as AppClientIndexRouteImport } from './routes/app/client/index'
 import { Route as AppAdminIndexRouteImport } from './routes/app/admin/index'
+import { Route as AppTemplatesTemplateIdRouteImport } from './routes/app/templates/$templateId'
 import { Route as AppReportsReportIdRouteImport } from './routes/app/reports/$reportId'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/app/projects/$projectId'
 import { Route as AppAdminUsersRouteImport } from './routes/app/admin/users'
@@ -31,6 +36,7 @@ import { Route as AppAdminProctorsRouteImport } from './routes/app/admin/proctor
 import { Route as AppAdminEquipmentRouteImport } from './routes/app/admin/equipment'
 import { Route as AppAdminClientsRouteImport } from './routes/app/admin/clients'
 import { Route as AppAdminCertificationsRouteImport } from './routes/app/admin/certifications'
+import { Route as AppAdminAuditRouteImport } from './routes/app/admin/audit'
 import { Route as AppReportsNewKindRouteImport } from './routes/app/reports/new.$kind'
 
 const SignInRoute = SignInRouteImport.update({
@@ -58,14 +64,34 @@ const RTokenRoute = RTokenRouteImport.update({
   path: '/r/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppHelpRoute = AppHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppDailyLogRoute = AppDailyLogRouteImport.update({
   id: '/daily-log',
   path: '/daily-log',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppAllocationRoute = AppAllocationRouteImport.update({
+  id: '/allocation',
+  path: '/allocation',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppAdminRouteRoute = AppAdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppTemplatesIndexRoute = AppTemplatesIndexRouteImport.update({
+  id: '/templates/',
+  path: '/templates/',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppReportsIndexRoute = AppReportsIndexRouteImport.update({
@@ -97,6 +123,11 @@ const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppAdminRouteRoute,
+} as any)
+const AppTemplatesTemplateIdRoute = AppTemplatesTemplateIdRouteImport.update({
+  id: '/templates/$templateId',
+  path: '/templates/$templateId',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppReportsReportIdRoute = AppReportsReportIdRouteImport.update({
   id: '/reports/$reportId',
@@ -143,6 +174,11 @@ const AppAdminCertificationsRoute = AppAdminCertificationsRouteImport.update({
   path: '/certifications',
   getParentRoute: () => AppAdminRouteRoute,
 } as any)
+const AppAdminAuditRoute = AppAdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppAdminRouteRoute,
+} as any)
 const AppReportsNewKindRoute = AppReportsNewKindRouteImport.update({
   id: '/reports/new/$kind',
   path: '/reports/new/$kind',
@@ -154,9 +190,13 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/app/admin': typeof AppAdminRouteRouteWithChildren
+  '/app/allocation': typeof AppAllocationRoute
   '/app/daily-log': typeof AppDailyLogRoute
+  '/app/help': typeof AppHelpRoute
+  '/app/profile': typeof AppProfileRoute
   '/r/$token': typeof RTokenRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/audit': typeof AppAdminAuditRoute
   '/app/admin/certifications': typeof AppAdminCertificationsRoute
   '/app/admin/clients': typeof AppAdminClientsRoute
   '/app/admin/equipment': typeof AppAdminEquipmentRoute
@@ -166,20 +206,26 @@ export interface FileRoutesByFullPath {
   '/app/admin/users': typeof AppAdminUsersRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/app/reports/$reportId': typeof AppReportsReportIdRoute
+  '/app/templates/$templateId': typeof AppTemplatesTemplateIdRoute
   '/app/admin/': typeof AppAdminIndexRoute
   '/app/client/': typeof AppClientIndexRoute
   '/app/lab/': typeof AppLabIndexRoute
   '/app/projects/': typeof AppProjectsIndexRoute
   '/app/queue/': typeof AppQueueIndexRoute
   '/app/reports/': typeof AppReportsIndexRoute
+  '/app/templates/': typeof AppTemplatesIndexRoute
   '/app/reports/new/$kind': typeof AppReportsNewKindRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
+  '/app/allocation': typeof AppAllocationRoute
   '/app/daily-log': typeof AppDailyLogRoute
+  '/app/help': typeof AppHelpRoute
+  '/app/profile': typeof AppProfileRoute
   '/r/$token': typeof RTokenRoute
   '/app': typeof AppIndexRoute
+  '/app/admin/audit': typeof AppAdminAuditRoute
   '/app/admin/certifications': typeof AppAdminCertificationsRoute
   '/app/admin/clients': typeof AppAdminClientsRoute
   '/app/admin/equipment': typeof AppAdminEquipmentRoute
@@ -189,12 +235,14 @@ export interface FileRoutesByTo {
   '/app/admin/users': typeof AppAdminUsersRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/app/reports/$reportId': typeof AppReportsReportIdRoute
+  '/app/templates/$templateId': typeof AppTemplatesTemplateIdRoute
   '/app/admin': typeof AppAdminIndexRoute
   '/app/client': typeof AppClientIndexRoute
   '/app/lab': typeof AppLabIndexRoute
   '/app/projects': typeof AppProjectsIndexRoute
   '/app/queue': typeof AppQueueIndexRoute
   '/app/reports': typeof AppReportsIndexRoute
+  '/app/templates': typeof AppTemplatesIndexRoute
   '/app/reports/new/$kind': typeof AppReportsNewKindRoute
 }
 export interface FileRoutesById {
@@ -203,9 +251,13 @@ export interface FileRoutesById {
   '/app': typeof AppRouteRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/app/admin': typeof AppAdminRouteRouteWithChildren
+  '/app/allocation': typeof AppAllocationRoute
   '/app/daily-log': typeof AppDailyLogRoute
+  '/app/help': typeof AppHelpRoute
+  '/app/profile': typeof AppProfileRoute
   '/r/$token': typeof RTokenRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/audit': typeof AppAdminAuditRoute
   '/app/admin/certifications': typeof AppAdminCertificationsRoute
   '/app/admin/clients': typeof AppAdminClientsRoute
   '/app/admin/equipment': typeof AppAdminEquipmentRoute
@@ -215,12 +267,14 @@ export interface FileRoutesById {
   '/app/admin/users': typeof AppAdminUsersRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/app/reports/$reportId': typeof AppReportsReportIdRoute
+  '/app/templates/$templateId': typeof AppTemplatesTemplateIdRoute
   '/app/admin/': typeof AppAdminIndexRoute
   '/app/client/': typeof AppClientIndexRoute
   '/app/lab/': typeof AppLabIndexRoute
   '/app/projects/': typeof AppProjectsIndexRoute
   '/app/queue/': typeof AppQueueIndexRoute
   '/app/reports/': typeof AppReportsIndexRoute
+  '/app/templates/': typeof AppTemplatesIndexRoute
   '/app/reports/new/$kind': typeof AppReportsNewKindRoute
 }
 export interface FileRouteTypes {
@@ -230,9 +284,13 @@ export interface FileRouteTypes {
     | '/app'
     | '/sign-in'
     | '/app/admin'
+    | '/app/allocation'
     | '/app/daily-log'
+    | '/app/help'
+    | '/app/profile'
     | '/r/$token'
     | '/app/'
+    | '/app/admin/audit'
     | '/app/admin/certifications'
     | '/app/admin/clients'
     | '/app/admin/equipment'
@@ -242,20 +300,26 @@ export interface FileRouteTypes {
     | '/app/admin/users'
     | '/app/projects/$projectId'
     | '/app/reports/$reportId'
+    | '/app/templates/$templateId'
     | '/app/admin/'
     | '/app/client/'
     | '/app/lab/'
     | '/app/projects/'
     | '/app/queue/'
     | '/app/reports/'
+    | '/app/templates/'
     | '/app/reports/new/$kind'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/sign-in'
+    | '/app/allocation'
     | '/app/daily-log'
+    | '/app/help'
+    | '/app/profile'
     | '/r/$token'
     | '/app'
+    | '/app/admin/audit'
     | '/app/admin/certifications'
     | '/app/admin/clients'
     | '/app/admin/equipment'
@@ -265,12 +329,14 @@ export interface FileRouteTypes {
     | '/app/admin/users'
     | '/app/projects/$projectId'
     | '/app/reports/$reportId'
+    | '/app/templates/$templateId'
     | '/app/admin'
     | '/app/client'
     | '/app/lab'
     | '/app/projects'
     | '/app/queue'
     | '/app/reports'
+    | '/app/templates'
     | '/app/reports/new/$kind'
   id:
     | '__root__'
@@ -278,9 +344,13 @@ export interface FileRouteTypes {
     | '/app'
     | '/sign-in'
     | '/app/admin'
+    | '/app/allocation'
     | '/app/daily-log'
+    | '/app/help'
+    | '/app/profile'
     | '/r/$token'
     | '/app/'
+    | '/app/admin/audit'
     | '/app/admin/certifications'
     | '/app/admin/clients'
     | '/app/admin/equipment'
@@ -290,12 +360,14 @@ export interface FileRouteTypes {
     | '/app/admin/users'
     | '/app/projects/$projectId'
     | '/app/reports/$reportId'
+    | '/app/templates/$templateId'
     | '/app/admin/'
     | '/app/client/'
     | '/app/lab/'
     | '/app/projects/'
     | '/app/queue/'
     | '/app/reports/'
+    | '/app/templates/'
     | '/app/reports/new/$kind'
   fileRoutesById: FileRoutesById
 }
@@ -343,6 +415,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/profile': {
+      id: '/app/profile'
+      path: '/profile'
+      fullPath: '/app/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/help': {
+      id: '/app/help'
+      path: '/help'
+      fullPath: '/app/help'
+      preLoaderRoute: typeof AppHelpRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/daily-log': {
       id: '/app/daily-log'
       path: '/daily-log'
@@ -350,11 +436,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDailyLogRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/allocation': {
+      id: '/app/allocation'
+      path: '/allocation'
+      fullPath: '/app/allocation'
+      preLoaderRoute: typeof AppAllocationRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/admin': {
       id: '/app/admin'
       path: '/admin'
       fullPath: '/app/admin'
       preLoaderRoute: typeof AppAdminRouteRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/templates/': {
+      id: '/app/templates/'
+      path: '/templates'
+      fullPath: '/app/templates/'
+      preLoaderRoute: typeof AppTemplatesIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/reports/': {
@@ -398,6 +498,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/admin/'
       preLoaderRoute: typeof AppAdminIndexRouteImport
       parentRoute: typeof AppAdminRouteRoute
+    }
+    '/app/templates/$templateId': {
+      id: '/app/templates/$templateId'
+      path: '/templates/$templateId'
+      fullPath: '/app/templates/$templateId'
+      preLoaderRoute: typeof AppTemplatesTemplateIdRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/app/reports/$reportId': {
       id: '/app/reports/$reportId'
@@ -462,6 +569,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminCertificationsRouteImport
       parentRoute: typeof AppAdminRouteRoute
     }
+    '/app/admin/audit': {
+      id: '/app/admin/audit'
+      path: '/audit'
+      fullPath: '/app/admin/audit'
+      preLoaderRoute: typeof AppAdminAuditRouteImport
+      parentRoute: typeof AppAdminRouteRoute
+    }
     '/app/reports/new/$kind': {
       id: '/app/reports/new/$kind'
       path: '/reports/new/$kind'
@@ -473,6 +587,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppAdminRouteRouteChildren {
+  AppAdminAuditRoute: typeof AppAdminAuditRoute
   AppAdminCertificationsRoute: typeof AppAdminCertificationsRoute
   AppAdminClientsRoute: typeof AppAdminClientsRoute
   AppAdminEquipmentRoute: typeof AppAdminEquipmentRoute
@@ -484,6 +599,7 @@ interface AppAdminRouteRouteChildren {
 }
 
 const AppAdminRouteRouteChildren: AppAdminRouteRouteChildren = {
+  AppAdminAuditRoute: AppAdminAuditRoute,
   AppAdminCertificationsRoute: AppAdminCertificationsRoute,
   AppAdminClientsRoute: AppAdminClientsRoute,
   AppAdminEquipmentRoute: AppAdminEquipmentRoute,
@@ -500,29 +616,39 @@ const AppAdminRouteRouteWithChildren = AppAdminRouteRoute._addFileChildren(
 
 interface AppRouteRouteChildren {
   AppAdminRouteRoute: typeof AppAdminRouteRouteWithChildren
+  AppAllocationRoute: typeof AppAllocationRoute
   AppDailyLogRoute: typeof AppDailyLogRoute
+  AppHelpRoute: typeof AppHelpRoute
+  AppProfileRoute: typeof AppProfileRoute
   AppIndexRoute: typeof AppIndexRoute
   AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
   AppReportsReportIdRoute: typeof AppReportsReportIdRoute
+  AppTemplatesTemplateIdRoute: typeof AppTemplatesTemplateIdRoute
   AppClientIndexRoute: typeof AppClientIndexRoute
   AppLabIndexRoute: typeof AppLabIndexRoute
   AppProjectsIndexRoute: typeof AppProjectsIndexRoute
   AppQueueIndexRoute: typeof AppQueueIndexRoute
   AppReportsIndexRoute: typeof AppReportsIndexRoute
+  AppTemplatesIndexRoute: typeof AppTemplatesIndexRoute
   AppReportsNewKindRoute: typeof AppReportsNewKindRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppAdminRouteRoute: AppAdminRouteRouteWithChildren,
+  AppAllocationRoute: AppAllocationRoute,
   AppDailyLogRoute: AppDailyLogRoute,
+  AppHelpRoute: AppHelpRoute,
+  AppProfileRoute: AppProfileRoute,
   AppIndexRoute: AppIndexRoute,
   AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,
   AppReportsReportIdRoute: AppReportsReportIdRoute,
+  AppTemplatesTemplateIdRoute: AppTemplatesTemplateIdRoute,
   AppClientIndexRoute: AppClientIndexRoute,
   AppLabIndexRoute: AppLabIndexRoute,
   AppProjectsIndexRoute: AppProjectsIndexRoute,
   AppQueueIndexRoute: AppQueueIndexRoute,
   AppReportsIndexRoute: AppReportsIndexRoute,
+  AppTemplatesIndexRoute: AppTemplatesIndexRoute,
   AppReportsNewKindRoute: AppReportsNewKindRoute,
 }
 

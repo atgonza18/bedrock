@@ -22,6 +22,13 @@ export const createAttachment = mutation({
     contentType: v.string(),
     sizeBytes: v.number(),
     caption: v.optional(v.string()),
+    gpsLat: v.optional(v.number()),
+    gpsLng: v.optional(v.number()),
+    gpsAccuracyM: v.optional(v.number()),
+    gpsCapturedAt: v.optional(v.number()),
+    gpsSource: v.optional(
+      v.union(v.literal("device"), v.literal("exif"), v.literal("manual")),
+    ),
   },
   handler: async (ctx, args) => {
     const member = await requireInternal(ctx);
@@ -46,6 +53,11 @@ export const createAttachment = mutation({
       sizeBytes: args.sizeBytes,
       caption: args.caption,
       uploadedByUserId: userId,
+      gpsLat: args.gpsLat,
+      gpsLng: args.gpsLng,
+      gpsAccuracyM: args.gpsAccuracyM,
+      gpsCapturedAt: args.gpsCapturedAt,
+      gpsSource: args.gpsSource,
     });
   },
 });

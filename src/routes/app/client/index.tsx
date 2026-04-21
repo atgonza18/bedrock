@@ -10,7 +10,7 @@ import { useSetBreadcrumbs } from "@/components/layout/breadcrumb-context";
 import { ReportStatusBadge } from "@/features/reports/ReportStatusBadge";
 import { FileText, Download, FolderKanban } from "lucide-react";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { KIND_LABELS } from "@/lib/constants";
+import { reportKindLabel } from "@/lib/constants";
 
 export const Route = createFileRoute("/app/client/")({
   component: ClientDashboard,
@@ -88,7 +88,7 @@ function ClientDashboard() {
                             {r.number}
                           </span>
                           <Badge variant="outline" className="text-xs capitalize">
-                            {KIND_LABELS[r.kind] ?? r.kind.replace(/_/g, " ")}
+                            {reportKindLabel(r.kind, r.templateName)}
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">

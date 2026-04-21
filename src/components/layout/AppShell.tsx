@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { ReactNode, useEffect, useState } from "react";
+import { Link, useRouterState, useRouter } from "@tanstack/react-router";
 import { useAuthActions } from "@convex-dev/auth/react";
 import {
   LayoutDashboard,
@@ -20,7 +20,17 @@ import {
   ChevronsUpDown,
   ChevronsLeft,
   ChevronsRight,
+  Sun,
+  Moon,
+  Monitor,
+  UserRound,
+  HelpCircle,
+  HardHat,
+  ClipboardList,
+  ActivitySquare,
 } from "lucide-react";
+import { permits } from "@/lib/permissions";
+import { useTheme } from "next-themes";
 import { useCurrentMember } from "@/features/auth/useCurrentMember";
 import {
   Sidebar,
@@ -53,6 +63,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -60,6 +75,19 @@ import { Badge } from "@/components/ui/badge";
 import { BreadcrumbProvider, useBreadcrumbContext } from "./breadcrumb-context";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogEyebrow,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ConnectionBanner } from "./ConnectionBanner";
+import { BedrockLogo } from "@/components/logo";
+import { CommandPalette } from "@/components/command-palette";
+import { InstallPrompt } from "@/components/InstallPrompt";
+import { MobileBottomNav } from "./MobileBottomNav";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -68,10 +96,158 @@ export function AppShell({ children }: { children: ReactNode }) {
         <AppSidebar />
         <SidebarInset>
           <AppHeader />
-          <div className="flex-1">{children}</div>
+          {/* Bottom padding on mobile so content clears the bottom nav. */}
+          <div className="flex-1 pb-16 md:pb-0">{children}</div>
         </SidebarInset>
+        <GlobalShortcuts />
+        <CommandPalette />
+        <ConnectionBanner />
+        <InstallPrompt />
+        <MobileBottomNav />
       </SidebarProvider>
     </BreadcrumbProvider>
+  );
+}
+
+// ─── Global keyboard shortcuts ──────────────────────────────────────────────
+// Linear-style: press G then a letter to navigate. Press ? for help.
+
+function GlobalShortcuts() {
+  const router = useRouter();
+  const me = useCurrentMember();
+  const [showHelp, setShowHelp] = useState(false);
+
+  const isAdmin = me?.state === "ok" && me.membership.role === "admin";
+  const isPmOrAdmin =
+    me?.state === "ok" &&
+    (me.membership.role === "pm" || me.membership.role === "admin");
+
+  useEffect(() => {
+    let leaderTimer: ReturnType<typeof setTimeout> | null = null;
+    let leaderActive = false;
+
+    const isEditable = (el: EventTarget | null): boolean => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
+    };
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isEditable(e.target)) return;
+
+      if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+        e.preventDefault();
+        setShowHelp((v) => !v);
+        return;
+      }
+
+      if (leaderActive) {
+        leaderActive = false;
+        if (leaderTimer) clearTimeout(leaderTimer);
+        const k = e.key.toLowerCase();
+        let to: string | null = null;
+        if (k === "d") to = "/app";
+        else if (k === "p") to = "/app/projects";
+        else if (k === "r") to = "/app/reports";
+        else if (k === "q" && isPmOrAdmin) to = "/app/queue";
+        else if (k === "a" && isAdmin) to = "/app/admin/users";
+        if (to) {
+          e.preventDefault();
+          void router.navigate({ to });
+        }
+        return;
+      }
+
+      if (e.key === "g" || e.key === "G") {
+        leaderActive = true;
+        leaderTimer = setTimeout(() => {
+          leaderActive = false;
+        }, 1_200);
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => {
+      window.removeEventListener("keydown", handler);
+      if (leaderTimer) clearTimeout(leaderTimer);
+    };
+  }, [router, isAdmin, isPmOrAdmin]);
+
+  return <ShortcutsDialog open={showHelp} onOpenChange={setShowHelp} isPmOrAdmin={isPmOrAdmin} isAdmin={isAdmin} />;
+}
+
+function ShortcutsDialog({
+  open,
+  onOpenChange,
+  isPmOrAdmin,
+  isAdmin,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  isPmOrAdmin: boolean;
+  isAdmin: boolean;
+}) {
+  const navItems = [
+    { keys: ["G", "D"], label: "Go to dashboard" },
+    { keys: ["G", "P"], label: "Go to projects" },
+    { keys: ["G", "R"], label: "Go to my reports" },
+    ...(isPmOrAdmin ? [{ keys: ["G", "Q"], label: "Go to review queue" }] : []),
+    ...(isAdmin ? [{ keys: ["G", "A"], label: "Go to admin" }] : []),
+  ];
+  const actions = [
+    { keys: ["⌘", "K"], label: "Open command palette" },
+    ...(isPmOrAdmin ? [{ keys: ["C"], label: "Claim next submitted report (on review queue)" }] : []),
+    { keys: ["?"], label: "Toggle this help" },
+    { keys: ["B"], label: "Toggle sidebar" },
+  ];
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogEyebrow>Keyboard shortcuts</DialogEyebrow>
+          <DialogTitle>Navigate faster</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <ShortcutGroup title="Navigation" items={navItems} />
+          <ShortcutGroup title="Actions" items={actions} />
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ShortcutGroup({
+  title,
+  items,
+}: {
+  title: string;
+  items: { keys: string[]; label: string }[];
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground mb-2">
+        {title}
+      </p>
+      <div className="divide-y">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center justify-between py-2">
+            <span className="text-sm">{item.label}</span>
+            <span className="flex items-center gap-1">
+              {item.keys.map((k, j) => (
+                <kbd
+                  key={j}
+                  className="font-mono text-[11px] border rounded px-1.5 py-0.5 bg-muted/50"
+                >
+                  {k}
+                </kbd>
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -80,19 +256,20 @@ export function AppShell({ children }: { children: ReactNode }) {
 function AppSidebar() {
   const me = useCurrentMember();
   const isAdmin = me?.state === "ok" && me.membership.role === "admin";
-  const isPmOrAdmin =
-    me?.state === "ok" &&
-    (me.membership.role === "pm" || me.membership.role === "admin");
   const isClientRole = me?.state === "ok" && me.membership.role === "client";
+  const canSeeAllocation = me?.state === "ok" && permits(me, "canViewAllocation");
+  const canReviewQueue = me?.state === "ok" && permits(me, "canApproveReports");
+  const canManageTemplates =
+    me?.state === "ok" && permits(me, "canManageTestTemplates");
 
   // Only run queries when user is fully onboarded (state === "ok").
   // Without this guard, queries fire before the profile exists and throw NO_PROFILE.
   const isReady = me?.state === "ok";
 
-  // Get queue count for badge (pm/admin only)
+  // Queue count for the badge — gated on approve permission, not just role.
   const queue = useQuery(
     api.reports.queries.listReviewQueue,
-    isReady && isPmOrAdmin ? {} : "skip",
+    isReady && canReviewQueue ? {} : "skip",
   );
   const queueCount = Array.isArray(queue) ? queue.length : 0;
 
@@ -110,13 +287,12 @@ function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild className="h-auto py-3">
-              <Link to="/app">
-                <img
-                  src="/bedrock-logo.png"
-                  srcSet="/bedrock-logo.png 1x, /bedrock-logo@2x.png 2x"
-                  alt="Bedrock"
-                  className="h-5 w-auto"
+            <SidebarMenuButton size="lg" asChild className="h-auto py-3" tooltip="Bedrock">
+              <Link to="/app" className="flex items-center gap-2">
+                <BedrockLogo
+                  variant="light"
+                  size="md"
+                  className="group-data-[collapsible=icon]:[&>span:last-child]:hidden"
                 />
               </Link>
             </SidebarMenuButton>
@@ -152,12 +328,26 @@ function AppSidebar() {
                   />
                   <NavItem to="/app/daily-log" icon={CalendarDays} label="Daily Log" />
                   <NavItem to="/app/lab" icon={FlaskConical} label="Lab" />
-                  {isPmOrAdmin && (
+                  {canReviewQueue && (
                     <NavItem
                       to="/app/queue"
                       icon={ClipboardCheck}
                       label="Review Queue"
                       badge={queueCount > 0 ? queueCount : undefined}
+                    />
+                  )}
+                  {canSeeAllocation && (
+                    <NavItem
+                      to="/app/allocation"
+                      icon={HardHat}
+                      label="Allocation"
+                    />
+                  )}
+                  {canManageTemplates && (
+                    <NavItem
+                      to="/app/templates"
+                      icon={ClipboardList}
+                      label="Templates"
                     />
                   )}
                 </SidebarMenu>
@@ -180,6 +370,7 @@ function AppSidebar() {
                       <NavItem to="/app/admin/proctors" icon={Layers} label="Proctors" />
                       <NavItem to="/app/admin/equipment" icon={Wrench} label="Equipment" />
                       <NavItem to="/app/admin/certifications" icon={Award} label="Certifications" />
+                      <NavItem to="/app/admin/audit" icon={ActivitySquare} label="Audit log" />
                       <NavItem to="/app/admin/settings" icon={Settings} label="Settings" />
                     </SidebarMenu>
                   </SidebarGroupContent>
@@ -243,6 +434,13 @@ function NavItem({
 
   return (
     <SidebarMenuItem>
+      {/* Active left-border accent — sits outside the button so the item hover doesn't animate it */}
+      {isActive && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-sm bg-sidebar-primary"
+        />
+      )}
       <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
         <Link to={to} onClick={() => { if (isMobile) setOpenMobile(false); }}>
           <Icon className="size-4" />
@@ -259,6 +457,7 @@ function NavItem({
 function UserMenu() {
   const me = useCurrentMember();
   const { signOut } = useAuthActions();
+  const { theme, setTheme } = useTheme();
 
   const name =
     me?.state === "ok"
@@ -274,6 +473,11 @@ function UserMenu() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  const currentThemeLabel =
+    theme === "dark" ? "Dark" : theme === "light" ? "Light" : "System";
+  const CurrentThemeIcon =
+    theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
 
   return (
     <SidebarMenu>
@@ -319,9 +523,58 @@ function UserMenu() {
                 )}
               </div>
             </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/app/profile">
+                <UserRound className="size-4" />
+                <span>Your profile</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/app/help">
+                <HelpCircle className="size-4" />
+                <span>Help &amp; shortcuts</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <CurrentThemeIcon className="size-4" />
+                <span>Theme</span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {currentThemeLabel}
+                </span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => setTheme("light")}>
+                    <Sun className="size-4" />
+                    <span>Light</span>
+                    {theme === "light" && (
+                      <span className="ml-auto text-xs text-muted-foreground">✓</span>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("dark")}>
+                    <Moon className="size-4" />
+                    <span>Dark</span>
+                    {theme === "dark" && (
+                      <span className="ml-auto text-xs text-muted-foreground">✓</span>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("system")}>
+                    <Monitor className="size-4" />
+                    <span>System</span>
+                    {theme === "system" && (
+                      <span className="ml-auto text-xs text-muted-foreground">✓</span>
+                    )}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => void signOut()}>
-              <LogOut className="size-4 mr-2" />
-              Sign out
+              <LogOut className="size-4" />
+              <span>Sign out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

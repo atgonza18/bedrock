@@ -146,6 +146,29 @@ export const loadForDelivery = internalQuery({
       if (contact && contact.isActive) recipients.push(contact);
     }
 
+    // Resolve photo URLs for any photo fields inside a custom response.
+    // The PDF template will look up storageId → url from this map.
+    const customPhotoUrls: Record<string, string> = {};
+    if (report.kind === "custom" && detail) {
+      let parsedVals: Record<string, unknown> = {};
+      try {
+        parsedVals = JSON.parse((detail as any).valuesJson ?? "{}");
+      } catch {
+        parsedVals = {};
+      }
+      for (const val of Object.values(parsedVals)) {
+        const v = val as { kind?: string; storageIds?: unknown };
+        if (v?.kind === "photo" && Array.isArray(v.storageIds)) {
+          for (const sid of v.storageIds) {
+            if (typeof sid !== "string") continue;
+            if (customPhotoUrls[sid]) continue;
+            const url = await ctx.storage.getUrl(sid as Id<"_storage">);
+            if (url) customPhotoUrls[sid] = url;
+          }
+        }
+      }
+    }
+
     return {
       org: {
         _id: org._id,
@@ -171,6 +194,7 @@ export const loadForDelivery = internalQuery({
       specZone,
       pileTypeInfo,
       photoUrls,
+      customPhotoUrls,
       recipients,
     };
   },

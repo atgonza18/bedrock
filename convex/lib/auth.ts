@@ -5,6 +5,55 @@ import { Doc, Id } from "../_generated/dataModel";
 
 export type Role = "admin" | "pm" | "tech" | "client";
 
+export type Permission =
+  | "canViewAllProjects"
+  | "canManageTeam"
+  | "canViewAllocation"
+  | "canApproveReports"
+  | "canManageTestTemplates";
+
+/**
+ * Resolve whether a member has a given permission, applying:
+ *   1. Admin always has everything.
+ *   2. Client never has internal permissions.
+ *   3. Otherwise: explicit grant on the membership wins; fall back to role defaults.
+ *
+ * Keep this function as the single source of truth — UI and backend both consult
+ * the same rule so an exec can't see a toggle that the backend doesn't honor.
+ */
+export function permits(member: CurrentMember, permission: Permission): boolean {
+  const role = member.membership.role;
+  if (role === "admin") return true;
+  if (role === "client") return false;
+
+  // Explicit override always wins — a PM with canApproveReports === false is denied
+  // even though the role would otherwise grant it.
+  const explicit = member.membership[permission];
+  if (explicit === true) return true;
+  if (explicit === false) return false;
+
+  // Role defaults for internal roles (pm, tech).
+  if (permission === "canApproveReports" && role === "pm") return true;
+  if (permission === "canManageTestTemplates" && role === "pm") return true;
+  return false;
+}
+
+/** Throws FORBIDDEN unless the current member has the permission. */
+export async function requirePermission(
+  ctx: QueryCtx | MutationCtx,
+  permission: Permission,
+): Promise<CurrentMember> {
+  const member = await requireMember(ctx);
+  if (!permits(member, permission)) {
+    throw new ConvexError({
+      code: "FORBIDDEN",
+      reason: "MISSING_PERMISSION",
+      permission,
+    });
+  }
+  return member;
+}
+
 export type CurrentMember = {
   userId: Id<"users">;
   profile: Doc<"userProfiles">;
@@ -106,6 +155,13 @@ export async function requireProjectAccess(
   projectId: Id<"projects">,
 ): Promise<void> {
   if (member.membership.role === "admin") return;
+
+  // Elevated internal users with cross-project visibility skip the assignment check.
+  if (permits(member, "canViewAllProjects")) {
+    const project = await ctx.db.get("projects", projectId);
+    if (project && project.orgId === member.org._id) return;
+    throw new ConvexError({ code: "FORBIDDEN", reason: "NO_PROJECT_ACCESS" });
+  }
 
   // Client users: check if the project belongs to their client company.
   if (member.membership.role === "client") {

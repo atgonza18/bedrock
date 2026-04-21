@@ -15,6 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { SaveIndicator } from "@/components/ui/save-indicator";
+import { useSaveState } from "@/features/reports/useSaveState";
 
 const dcpSchema = z.object({
   fieldDate: z.string().optional(),
@@ -72,6 +74,7 @@ export function DcpForm({ reportId, report, detail, readOnly }: Props) {
   const selectedZone = zones?.find((z) => z._id === report.specZoneId) ?? null;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initializedRef = useRef(false);
+  const { state: saveState, savedAt, track } = useSaveState();
 
   const form = useForm<DcpFormValues>({
     resolver: zodResolver(dcpSchema),
@@ -120,7 +123,7 @@ export function DcpForm({ reportId, report, detail, readOnly }: Props) {
         ? { tempF: toNum(weather.tempF), conditions: weather.conditions || undefined, windMph: toNum(weather.windMph) }
         : undefined;
 
-      void updateDraft({
+      void track(updateDraft({
         reportId,
         fieldDate: dateStrToTs(fieldDate),
         weather: cleanWeather,
@@ -132,9 +135,9 @@ export function DcpForm({ reportId, report, detail, readOnly }: Props) {
           groundwaterDepthIn: toNum(detailFields.groundwaterDepthIn),
           hammerWeightLbs: toNum(detailFields.hammerWeightLbs),
         },
-      });
+      }));
     },
-    [reportId, updateDraft, readOnly],
+    [reportId, updateDraft, readOnly, track],
   );
 
   const debouncedSave = useCallback(
@@ -166,6 +169,15 @@ export function DcpForm({ reportId, report, detail, readOnly }: Props) {
 
   return (
     <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+      {!readOnly && (
+        <div className="flex justify-end -mb-2 sticky top-16 z-20 sm:static sm:top-auto sm:z-auto pointer-events-none">
+          <SaveIndicator
+            state={saveState}
+            savedAt={savedAt}
+            className="pointer-events-auto bg-background/90 backdrop-blur-sm shadow-sm sm:shadow-none sm:bg-transparent sm:backdrop-blur-none"
+          />
+        </div>
+      )}
       {/* Section 1: Site Conditions */}
       <section className="space-y-4">
         <h3 className="font-heading text-sm font-semibold text-foreground">
@@ -181,10 +193,10 @@ export function DcpForm({ reportId, report, detail, readOnly }: Props) {
           <Select
             value={report.specZoneId ?? ""}
             onValueChange={(v) => {
-              void updateDraft({
+              void track(updateDraft({
                 reportId,
                 specZoneId: v as Id<"projectSpecZones">,
-              });
+              }));
             }}
             disabled={disabled}
           >

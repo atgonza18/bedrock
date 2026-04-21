@@ -11,6 +11,7 @@ import {
   Archive,
   ArchiveRestore,
   ArrowLeft,
+  Copy,
   Download,
   ExternalLink,
   Send,
@@ -19,11 +20,9 @@ import {
   Clock,
   FileText,
   Truck,
-  XIcon,
-  ShieldCheck,
-  PenLine,
   CheckCircle,
   XCircle,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ReportStatusBadge } from "@/features/reports/ReportStatusBadge";
@@ -36,6 +35,7 @@ import { CylinderSetEditor } from "@/features/reports/CylinderSetEditor";
 import { DensityReadingsEditor } from "@/features/reports/DensityReadingsEditor";
 import { DcpLayersEditor } from "@/features/reports/DcpLayersEditor";
 import { PileLoadForm } from "@/features/reports/forms/PileLoadForm";
+import { CustomTestForm } from "@/features/customTemplates/CustomTestForm";
 import { PileLoadIncrementEditor } from "@/features/reports/PileLoadIncrementEditor";
 import { validateForSubmit } from "@/lib/schemas/concreteField";
 import { ReportWizard, WizardStep } from "@/features/reports/ReportWizard";
@@ -46,15 +46,20 @@ import { useCurrentMember } from "@/features/auth/useCurrentMember";
 import { canEditReport } from "@/lib/permissions";
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
+  DialogDescription,
+  DialogEyebrow,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { SignaturePad } from "@/features/queue/SignaturePad";
-import { useState } from "react";
-import { KIND_LABELS } from "@/lib/constants";
+import { useEffect, useState } from "react";
+import { reportKindLabel } from "@/lib/constants";
+import { haptics } from "@/lib/haptics";
 
 export const Route = createFileRoute("/app/reports/$reportId")({
   component: ReportDetailPage,
@@ -81,6 +86,7 @@ function ReportDetailPage() {
   const rejectMut = useMutation(api.reports.mutations.rejectWithComments);
   const archiveMut = useMutation(api.reports.mutations.archive);
   const restoreMut = useMutation(api.reports.mutations.restore);
+  const duplicateMut = useMutation(api.reports.mutations.duplicate);
   const generateUploadUrl = useMutation(api.reports.attachments.generateUploadUrl);
   const [showResubmitDialog, setShowResubmitDialog] = useState(false);
   const [resubmissionNote, setResubmissionNote] = useState("");
@@ -90,7 +96,21 @@ function ReportDetailPage() {
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [actionSubmitting, setActionSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const [signatureMode, setSignatureMode] = useState<"on_file" | "draw">("on_file");
   const [proctorValues, setProctorValues] = useState<{ maxDryDensityPcf: number; optimumMoisturePct: number } | null>(null);
+  const profileAssets = useQuery(
+    api.users.getMyProfileAssets,
+    showApproveDialog ? {} : "skip",
+  );
+
+  useEffect(() => {
+    if (!showApproveDialog) return;
+    setSignatureMode(profileAssets?.signatureUrl ? "on_file" : "draw");
+  }, [showApproveDialog, profileAssets?.signatureUrl]);
 
   useSetBreadcrumbs(
     data
@@ -130,23 +150,28 @@ function ReportDetailPage() {
   const hasTimeline = !isClientUser && data.auditLog && data.auditLog.length > 0;
 
   const handleApprove = async () => {
-    if (!signatureDataUrl) return;
     setActionSubmitting(true);
     try {
-      const res = await fetch(signatureDataUrl);
-      const blob = await res.blob();
-      const uploadUrl = await generateUploadUrl({});
-      const uploadRes = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": "image/png" },
-        body: blob,
-      });
-      const { storageId } = (await uploadRes.json()) as { storageId: Id<"_storage"> };
+      let signatureStorageId: Id<"_storage"> | undefined;
+      if (signatureMode === "draw") {
+        if (!signatureDataUrl) return;
+        const res = await fetch(signatureDataUrl);
+        const blob = await res.blob();
+        const uploadUrl = await generateUploadUrl({});
+        const uploadRes = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": "image/png" },
+          body: blob,
+        });
+        const { storageId } = (await uploadRes.json()) as { storageId: Id<"_storage"> };
+        signatureStorageId = storageId;
+      }
       await approveMut({
         reportId: report._id,
-        signatureStorageId: storageId,
+        signatureStorageId,
         comments: approveComments || undefined,
       });
+      haptics.success();
       toast.success("Report approved.");
       setApproveComments("");
       setSignatureDataUrl(null);
@@ -161,6 +186,7 @@ function ReportDetailPage() {
     setActionSubmitting(true);
     void rejectMut({ reportId: report._id, reason: rejectReason })
       .then(() => {
+        haptics.warn();
         toast.success("Report returned to tech.");
         setRejectReason("");
         setShowRejectDialog(false);
@@ -177,6 +203,7 @@ function ReportDetailPage() {
         placementLocation: detail.placementLocation ?? undefined,
       });
       if (missing.length > 0) {
+        haptics.error();
         toast.error(
           `Fill in required fields before submitting: ${missing.join(", ")}`,
         );
@@ -188,20 +215,48 @@ function ReportDetailPage() {
       setShowResubmitDialog(true);
       return;
     }
-    void submitReport({ reportId: report._id }).then(() => {
-      toast.success("Report submitted for review.");
-    });
+    setSubmitting(true);
+    void submitReport({ reportId: report._id })
+      .then(() => {
+        haptics.success();
+        toast.success("Report submitted for review.");
+      })
+      .finally(() => setSubmitting(false));
   };
 
   const handleResubmit = () => {
+    setResubmitting(true);
     void submitReport({
       reportId: report._id,
       resubmissionNote: resubmissionNote.trim() || undefined,
-    }).then(() => {
-      setShowResubmitDialog(false);
-      setResubmissionNote("");
-      toast.success("Report resubmitted for review.");
-    });
+    })
+      .then(() => {
+        haptics.success();
+        setShowResubmitDialog(false);
+        setResubmissionNote("");
+        toast.success("Report resubmitted for review.");
+      })
+      .finally(() => setResubmitting(false));
+  };
+
+  const handleDuplicate = () => {
+    setDuplicating(true);
+    void duplicateMut({ sourceReportId: report._id })
+      .then((newId) => {
+        toast.success("Draft duplicated");
+        void router.navigate({
+          to: "/app/reports/$reportId",
+          params: { reportId: newId },
+        });
+      })
+      .finally(() => setDuplicating(false));
+  };
+
+  const handleArchive = () => {
+    setArchiving(true);
+    void archiveMut({ reportId: report._id })
+      .then(() => toast.success("Report archived."))
+      .finally(() => setArchiving(false));
   };
 
   const handleBack = () => {
@@ -227,6 +282,8 @@ function ReportDetailPage() {
         return <DcpForm key={report._id} reportId={report._id} report={report} detail={detail} readOnly={!isEditable} />;
       case "pile_load":
         return <PileLoadForm key={report._id} reportId={report._id} report={report} detail={detail} readOnly={!isEditable} renderIncrementEditor={(liveLoadDirection) => <PileLoadIncrementEditor reportId={report._id} increments={data.pileLoadIncrements} readOnly={!isEditable} loadDirection={liveLoadDirection} />} />;
+      case "custom":
+        return <CustomTestForm key={report._id} reportId={report._id} detail={detail as any} readOnly={!isEditable} />;
       default:
         return null;
     }
@@ -305,17 +362,26 @@ function ReportDetailPage() {
               <ReportStatusBadge status={report.status} />
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {KIND_LABELS[report.kind] ?? report.kind} &middot;{" "}
-              {project?.name ?? "Unknown project"} &middot; {creatorName}
+              {reportKindLabel(
+                report.kind,
+                detail?.templateNameAtCreation as string | undefined,
+              )}{" "}
+              &middot; {project?.name ?? "Unknown project"} &middot;{" "}
+              {creatorName}
             </p>
           </div>
           {isEditable && (
             <Button
               onClick={handleSubmit}
+              disabled={submitting}
               className="shrink-0 hidden sm:inline-flex"
             >
-              <Send className="h-4 w-4 mr-1.5" />
-              Submit for review
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              {submitting ? "Submitting…" : "Submit for review"}
             </Button>
           )}
           {canReview && (
@@ -330,18 +396,36 @@ function ReportDetailPage() {
               </Button>
             </div>
           )}
+          {report.status !== "archived" && userCanEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground shrink-0 hidden sm:inline-flex"
+              onClick={handleDuplicate}
+              disabled={duplicating}
+              title="Create a new draft with the same mix/supplier/station info"
+            >
+              {duplicating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              Duplicate
+            </Button>
+          )}
           {report.status !== "archived" && (
             <Button
               variant="ghost"
               size="sm"
               className="text-muted-foreground shrink-0 hidden sm:inline-flex"
-              onClick={() => {
-                void archiveMut({ reportId: report._id }).then(() =>
-                  toast.success("Report archived."),
-                );
-              }}
+              onClick={handleArchive}
+              disabled={archiving}
             >
-              <Archive className="h-3.5 w-3.5 mr-1" />
+              {archiving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Archive className="h-3.5 w-3.5" />
+              )}
               Archive
             </Button>
           )}
@@ -371,32 +455,30 @@ function ReportDetailPage() {
 
         {/* Archived banner */}
         {report.status === "archived" && (
-          <Card className="border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20">
-            <CardContent className="py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Archive className="size-4 text-amber-600" />
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                    This report was archived{report.archivedAt ? ` on ${new Date(report.archivedAt).toLocaleDateString()}` : ""}.
-                  </p>
-                </div>
-                {isPmOrAdmin && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      void restoreMut({ reportId: report._id }).then(() =>
-                        toast.success("Report restored."),
-                      );
-                    }}
-                  >
-                    <ArchiveRestore className="h-3.5 w-3.5 mr-1" />
-                    Restore
-                  </Button>
-                )}
+          <div className="rounded-lg border border-l-4 border-l-amber-brand bg-card px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <Archive className="size-4 text-muted-foreground" />
+                <p className="text-sm">
+                  This report was archived{report.archivedAt ? ` on ${new Date(report.archivedAt).toLocaleDateString()}` : ""}.
+                </p>
               </div>
-            </CardContent>
-          </Card>
+              {isPmOrAdmin && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    void restoreMut({ reportId: report._id }).then(() =>
+                      toast.success("Report restored."),
+                    );
+                  }}
+                >
+                  <ArchiveRestore className="h-3.5 w-3.5" />
+                  Restore
+                </Button>
+              )}
+            </div>
+          </div>
         )}
       </div>
 
@@ -407,9 +489,18 @@ function ReportDetailPage() {
           style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
         >
           {isEditable && (
-            <Button onClick={handleSubmit} className="w-full" size="lg">
-              <Send className="h-4 w-4 mr-1.5" />
-              Submit for review
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full"
+              size="lg"
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              {submitting ? "Submitting…" : "Submit for review"}
             </Button>
           )}
           {canReview && (
@@ -429,173 +520,187 @@ function ReportDetailPage() {
 
       {/* Resubmission dialog */}
       <Dialog open={showResubmitDialog} onOpenChange={setShowResubmitDialog}>
-        <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden" showCloseButton={false}>
-          {/* Accent header */}
-          <div className="bg-gradient-to-b from-blue-50 to-transparent dark:from-blue-950/40 dark:to-transparent px-5 pt-5 pb-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3">
-                <div className="size-9 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0 mt-0.5">
-                  <Send className="size-4 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <DialogTitle className="text-base font-semibold">Resubmit for review</DialogTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Your report will go back to the review queue.
-                  </p>
-                </div>
-              </div>
-              <DialogClose asChild>
-                <Button variant="ghost" size="icon-sm" className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground">
-                  <XIcon className="size-4" />
-                  <span className="sr-only">Close</span>
-                </Button>
-              </DialogClose>
-            </div>
-          </div>
-
-          {/* Rejection context */}
+        <DialogContent>
+          <DialogHeader>
+            <DialogEyebrow>Resubmission</DialogEyebrow>
+            <DialogTitle>Resubmit for review</DialogTitle>
+            <DialogDescription>
+              Your report will go back to the review queue.
+            </DialogDescription>
+          </DialogHeader>
           {report.rejectionReason && (
-            <div className="mx-5 mt-1 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 px-3.5 py-3">
-              <p className="text-xs font-medium text-red-700 dark:text-red-400 uppercase tracking-wider mb-1">Rejection reason</p>
-              <p className="text-sm text-red-900 dark:text-red-300 leading-relaxed">{report.rejectionReason}</p>
+            <div className="mx-6 mt-5 border-l-2 border-destructive pl-3 py-1">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground mb-1">
+                Rejection reason
+              </p>
+              <p className="text-sm leading-relaxed">{report.rejectionReason}</p>
             </div>
           )}
-
-          {/* Note input */}
-          <div className="px-5 py-4 space-y-2">
-            <label className="text-sm font-medium text-foreground">
+          <DialogBody className="space-y-2">
+            <Label className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
               What did you fix?
-              <span className="text-muted-foreground font-normal ml-1.5">Optional</span>
-            </label>
+              <span className="normal-case tracking-normal text-muted-foreground/70 ml-2">
+                optional
+              </span>
+            </Label>
             <Textarea
               value={resubmissionNote}
               onChange={(e) => setResubmissionNote(e.target.value)}
-              placeholder="e.g. Corrected mix design number, added missing ticket..."
+              placeholder="e.g. Corrected mix design number, added missing ticket…"
               rows={3}
               className="resize-none"
             />
-          </div>
-
-          {/* Footer */}
-          <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
-            <Button variant="outline" onClick={() => setShowResubmitDialog(false)}>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowResubmitDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleResubmit} className="min-w-[120px]">
-              <Send className="size-4 mr-1.5" />
-              Resubmit
+            <Button
+              onClick={handleResubmit}
+              disabled={resubmitting}
+              className="min-w-[140px]"
+            >
+              {resubmitting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Send className="size-4" />
+              )}
+              {resubmitting ? "Resubmitting…" : "Resubmit"}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Approve dialog */}
       <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
-        <DialogContent className="sm:max-w-lg gap-0 p-0 overflow-hidden" showCloseButton={false}>
-          <div className="bg-gradient-to-b from-emerald-50 to-transparent dark:from-emerald-950/40 dark:to-transparent px-5 pt-5 pb-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3">
-                <div className="size-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0 mt-0.5">
-                  <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <DialogTitle className="text-base font-semibold">Approve report</DialogTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Sign below to approve. Your signature will appear on the delivered PDF.
-                  </p>
-                </div>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogEyebrow>Certification</DialogEyebrow>
+            <DialogTitle>Approve report</DialogTitle>
+            <DialogDescription>
+              Your signature appears on the delivered PDF and the client portal.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                  Signature
+                </Label>
+                {profileAssets?.signatureUrl && (
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                    onClick={() =>
+                      setSignatureMode((m) =>
+                        m === "on_file" ? "draw" : "on_file",
+                      )
+                    }
+                  >
+                    {signatureMode === "on_file"
+                      ? "Draw a different one"
+                      : "Use signature on file"}
+                  </button>
+                )}
               </div>
-              <DialogClose asChild>
-                <Button variant="ghost" size="icon-sm" className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground">
-                  <XIcon className="size-4" />
-                  <span className="sr-only">Close</span>
-                </Button>
-              </DialogClose>
+              {signatureMode === "on_file" && profileAssets?.signatureUrl ? (
+                <div className="border border-border/70 rounded-sm bg-background p-3 flex items-center justify-between gap-3">
+                  <img
+                    src={profileAssets.signatureUrl}
+                    alt="Your signature on file"
+                    className="h-12 w-auto"
+                  />
+                  <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                    On file
+                  </span>
+                </div>
+              ) : (
+                <SignaturePad onCapture={setSignatureDataUrl} />
+              )}
             </div>
-          </div>
-          <div className="px-5 py-4 space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Signature</Label>
-              <SignaturePad onCapture={setSignatureDataUrl} />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
+              <Label className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
                 Comments
-                <span className="text-muted-foreground font-normal ml-1.5">Optional</span>
+                <span className="normal-case tracking-normal text-muted-foreground/70 ml-2">
+                  optional
+                </span>
               </Label>
               <Textarea
                 value={approveComments}
                 onChange={(e) => setApproveComments(e.target.value)}
                 rows={2}
-                placeholder="Any notes for the record..."
+                placeholder="Any notes for the record…"
                 className="resize-none"
               />
             </div>
-          </div>
-          <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
-            <Button variant="outline" onClick={() => setShowApproveDialog(false)}>Cancel</Button>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowApproveDialog(false)}>
+              Cancel
+            </Button>
             <Button
-              className="min-w-[140px]"
-              disabled={!signatureDataUrl || actionSubmitting}
+              className="min-w-[160px]"
+              disabled={
+                actionSubmitting ||
+                (signatureMode === "draw" ? !signatureDataUrl : !profileAssets?.signatureUrl)
+              }
               onClick={() => void handleApprove()}
             >
-              <CheckCircle className="size-4 mr-1.5" />
-              {actionSubmitting ? "Approving..." : "Approve & sign"}
+              {actionSubmitting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <CheckCircle className="size-4" />
+              )}
+              {actionSubmitting ? "Approving…" : "Approve & sign"}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Reject dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden" showCloseButton={false}>
-          <div className="bg-gradient-to-b from-red-50 to-transparent dark:from-red-950/40 dark:to-transparent px-5 pt-5 pb-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3">
-                <div className="size-9 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0 mt-0.5">
-                  <PenLine className="size-4 text-red-600 dark:text-red-400" />
-                </div>
-                <div>
-                  <DialogTitle className="text-base font-semibold">Request changes</DialogTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    The tech will see your feedback and can resubmit.
-                  </p>
-                </div>
-              </div>
-              <DialogClose asChild>
-                <Button variant="ghost" size="icon-sm" className="shrink-0 -mr-1 -mt-1 text-muted-foreground hover:text-foreground">
-                  <XIcon className="size-4" />
-                  <span className="sr-only">Close</span>
-                </Button>
-              </DialogClose>
-            </div>
-          </div>
-          <div className="px-5 py-4 space-y-2">
-            <Label className="text-sm font-medium">What needs to be fixed?</Label>
+        <DialogContent>
+          <DialogHeader>
+            <DialogEyebrow>Return for changes</DialogEyebrow>
+            <DialogTitle>Request changes</DialogTitle>
+            <DialogDescription>
+              The tech will see your feedback and can resubmit.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-2">
+            <Label className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+              What needs to be fixed?
+            </Label>
             <Textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               rows={4}
-              placeholder="e.g. Mix design number doesn't match the ticket, missing placement location..."
+              placeholder="e.g. Mix design number doesn't match the ticket…"
               required
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
               Be specific so the tech knows exactly what to correct.
             </p>
-          </div>
-          <div className="border-t bg-muted/40 px-5 py-3.5 flex items-center justify-end gap-2.5">
-            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>Cancel</Button>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowRejectDialog(false)}>
+              Cancel
+            </Button>
             <Button
               variant="destructive"
               className="min-w-[160px]"
               disabled={!rejectReason.trim() || actionSubmitting}
               onClick={handleReject}
             >
-              <XCircle className="size-4 mr-1.5" />
-              {actionSubmitting ? "Sending..." : "Request changes"}
+              {actionSubmitting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <XCircle className="size-4" />
+              )}
+              {actionSubmitting ? "Sending…" : "Request changes"}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -605,20 +710,18 @@ function ReportDetailPage() {
         <div className="flex-1 min-w-0 space-y-6">
           {/* Rejection alert */}
           {report.status === "rejected" && report.rejectionReason && (
-            <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-gradient-to-r from-red-50 to-red-50/50 dark:from-red-950/30 dark:to-red-950/10 p-4">
+            <div className="rounded-lg border border-l-4 border-l-destructive bg-card p-4">
               <div className="flex items-start gap-3">
-                <div className="size-8 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0 mt-0.5">
-                  <AlertTriangle className="size-4 text-red-600 dark:text-red-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-red-800 dark:text-red-300">Changes requested</p>
-                  <p className="text-sm text-red-700 dark:text-red-400 mt-1 leading-relaxed">
-                    {report.rejectionReason}
+                <AlertTriangle className="size-4 text-destructive shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0 space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                    Changes requested
                   </p>
+                  <p className="text-sm leading-relaxed">{report.rejectionReason}</p>
                   {data.rejectedByName && (
-                    <p className="text-xs text-red-500 dark:text-red-500 mt-2">
-                      &mdash; {data.rejectedByName}
-                      {report.rejectedAt && <>, {new Date(report.rejectedAt).toLocaleDateString()}</>}
+                    <p className="text-xs text-muted-foreground pt-1">
+                      {data.rejectedByName}
+                      {report.rejectedAt && <> · {new Date(report.rejectedAt).toLocaleDateString()}</>}
                     </p>
                   )}
                 </div>

@@ -42,6 +42,11 @@ export const getReportByToken = query({
       detail = await ctx.db.get("dcpTests", report.detailId as Id<"dcpTests">);
     } else if (report.kind === "pile_load") {
       detail = await ctx.db.get("pileLoadTests", report.detailId as Id<"pileLoadTests">);
+    } else if (report.kind === "custom") {
+      detail = await ctx.db.get(
+        "customTestResponses",
+        report.detailId as Id<"customTestResponses">,
+      );
     }
 
     // Load cylinders
@@ -74,19 +79,32 @@ export const getReportByToken = query({
       pdfUrl = await ctx.storage.getUrl(report.pdfStorageId);
     }
 
-    // Approval info (signature URL for display)
+    // Approval info (signature URL + approver name for display)
     let approvalInfo = null;
     if (report.approvalId) {
       const approval = await ctx.db.get("reportApprovals", report.approvalId);
       if (approval) {
         const sigUrl = await ctx.storage.getUrl(approval.signatureStorageId);
+        const approverProfile = await ctx.db
+          .query("userProfiles")
+          .withIndex("by_userId", (q) => q.eq("userId", approval.approvedByUserId))
+          .first();
         approvalInfo = {
           approvedAt: approval.approvedAt,
           signatureUrl: sigUrl,
           comments: approval.comments,
+          approvedByName: approverProfile?.fullName ?? null,
+          peLicenseNumber: approval.peLicenseNumberAtTime ?? null,
+          peState: approval.peStateAtTime ?? null,
         };
       }
     }
+
+    const templateName: string | null =
+      report.kind === "custom" && detail
+        ? ((detail as { templateNameAtCreation?: string })
+            .templateNameAtCreation ?? null)
+        : null;
 
     return {
       state: "ok" as const,
@@ -95,6 +113,7 @@ export const getReportByToken = query({
       jobNumber: project?.jobNumber ?? "",
       reportNumber: report.number,
       kind: report.kind,
+      templateName,
       status: report.status,
       fieldDate: report.fieldDate,
       weather: report.weather,

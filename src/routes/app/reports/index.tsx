@@ -9,9 +9,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ReportStatusBadge } from "@/features/reports/ReportStatusBadge";
 import { useSetBreadcrumbs } from "@/components/layout/breadcrumb-context";
 import { useCurrentMember } from "@/features/auth/useCurrentMember";
-import { FileText, FolderKanban, ArrowUpDown, Clock, MoreHorizontal, Archive, ArchiveRestore } from "lucide-react";
+import { FileText, FolderKanban, ArrowUpDown, Clock, MoreHorizontal, Archive, ArchiveRestore, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { TestKindIcon } from "@/components/test-icons";
+import { kindColor } from "@/lib/test-kind-colors";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { KIND_LABELS } from "@/lib/constants";
+import { KIND_LABELS, reportKindLabel } from "@/lib/constants";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -70,6 +75,9 @@ function getDisplayDate(r: { status: string; fieldDate?: number; submittedAt?: n
 function MyReportsPage() {
   const reports = useQuery(api.reports.queries.listMyReports);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [kindFilter, setKindFilter] = useState<string>("all");
+  const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [search, setSearch] = useState<string>("");
   const [sortBy, setSortBy] = useState<string>("newest");
   const me = useCurrentMember();
   const isPmOrAdmin = me?.state === "ok" && (me.membership.role === "pm" || me.membership.role === "admin");
@@ -78,10 +86,33 @@ function MyReportsPage() {
 
   useSetBreadcrumbs([{ label: "My Reports" }]);
 
+  // Derive unique project list for the project filter
+  const projectOptions = useMemo(() => {
+    if (!reports) return [];
+    const seen = new Map<string, string>();
+    for (const r of reports) {
+      if (r.projectId && r.projectName) seen.set(r.projectId, r.projectName);
+    }
+    return [...seen.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [reports]);
+
   // Filter
   const filtered = useMemo(() => {
     if (!reports) return undefined;
-    const base = statusFilter === "all" ? reports : reports.filter((r) => r.status === statusFilter);
+    let base = reports;
+    if (statusFilter !== "all") base = base.filter((r) => r.status === statusFilter);
+    if (kindFilter !== "all") base = base.filter((r) => r.kind === kindFilter);
+    if (projectFilter !== "all") base = base.filter((r) => r.projectId === projectFilter);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      base = base.filter(
+        (r) =>
+          r.number.toLowerCase().includes(q) ||
+          (r.projectName ?? "").toLowerCase().includes(q),
+      );
+    }
 
     // Sort
     const sorted = [...base];
@@ -104,7 +135,7 @@ function MyReportsPage() {
         break;
     }
     return sorted;
-  }, [reports, statusFilter, sortBy]);
+  }, [reports, statusFilter, kindFilter, projectFilter, search, sortBy]);
 
   // Compute counts for filter pills
   const counts: Record<string, number> = {};
@@ -114,9 +145,34 @@ function MyReportsPage() {
     }
   }
 
+  const { bind, pull, refreshing, progress } = usePullToRefresh(async () => {
+    // Reactive queries refresh on their own; hold briefly so the spinner feels real.
+    await new Promise((r) => setTimeout(r, 400));
+  });
+
   return (
     <PageTransition>
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6 space-y-6">
+    <div
+      className="mx-auto max-w-5xl px-4 sm:px-6 py-6 space-y-6"
+      {...bind}
+    >
+      {(pull > 0 || refreshing) && (
+        <div
+          className="flex items-center justify-center"
+          style={{ height: refreshing ? 40 : pull, transition: refreshing ? "height 0.15s" : undefined }}
+        >
+          <RefreshCw
+            className={cn(
+              "size-5 text-muted-foreground",
+              refreshing && "animate-spin",
+            )}
+            style={{
+              transform: refreshing ? undefined : `rotate(${progress * 360}deg)`,
+              opacity: refreshing ? 1 : progress,
+            }}
+          />
+        </div>
+      )}
       <div>
         <h1 className="font-heading text-2xl font-bold tracking-tight">My Reports</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -126,9 +182,73 @@ function MyReportsPage() {
 
       {/* Filters + sort */}
       {reports && reports.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          {/* Status filters */}
-          <div className="flex flex-wrap gap-2 flex-1">
+        <div className="space-y-3">
+          {/* Row 1: search + kind + project + sort */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by number or project…"
+                className="pl-8"
+              />
+            </div>
+            <Select value={kindFilter} onValueChange={setKindFilter}>
+              <SelectTrigger className="sm:w-[180px]">
+                <SelectValue placeholder="All test types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All test types</SelectItem>
+                {Object.entries(KIND_LABELS).map(([kind, label]) => (
+                  <SelectItem key={kind} value={kind}>
+                    <span className="flex items-center gap-2">
+                      <TestKindIcon
+                        kind={kind}
+                        width={14}
+                        height={14}
+                        style={{ color: kindColor(kind).oklch }}
+                      />
+                      {label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {projectOptions.length > 1 && (
+              <Select value={projectFilter} onValueChange={setProjectFilter}>
+                <SelectTrigger className="sm:w-[200px]">
+                  <SelectValue placeholder="All projects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All projects</SelectItem>
+                  {projectOptions.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <div className="flex items-center gap-2 shrink-0">
+              <ArrowUpDown className="size-3.5 text-muted-foreground" />
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Row 2: status pills */}
+          <div className="flex flex-wrap gap-2">
             {STATUS_FILTERS.map(({ value, label }) => {
               const count = value === "all" ? reports.length : (counts[value] ?? 0);
               if (value !== "all" && count === 0) return null;
@@ -149,23 +269,21 @@ function MyReportsPage() {
                 </button>
               );
             })}
-          </div>
-
-          {/* Sort dropdown */}
-          <div className="flex items-center gap-2 shrink-0">
-            <ArrowUpDown className="size-3.5 text-muted-foreground" />
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="h-7 w-[160px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SORT_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {(kindFilter !== "all" ||
+              projectFilter !== "all" ||
+              search.trim()) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setKindFilter("all");
+                  setProjectFilter("all");
+                  setSearch("");
+                }}
+                className="ml-auto text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+              >
+                Reset filters
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -222,7 +340,7 @@ function MyReportsPage() {
                             variant="outline"
                             className="text-xs capitalize"
                           >
-                            {KIND_LABELS[r.kind] ?? r.kind}
+                            {reportKindLabel(r.kind, r.templateName)}
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">

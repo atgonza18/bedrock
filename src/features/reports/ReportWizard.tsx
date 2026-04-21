@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,56 +13,71 @@ type Props = {
 };
 
 /**
- * On mobile (< sm): shows one step at a time with prev/next navigation
- * and a step indicator. On desktop (>= sm): shows all steps stacked
- * with separators — same as before.
+ * On mobile (< sm): one step at a time with a numeric step indicator.
+ * On desktop (>= sm): all steps stacked, unchanged.
  */
 export function ReportWizard({ steps }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
+  const total = steps.length;
+  const mobileTopRef = useRef<HTMLDivElement>(null);
+  const firstRender = useRef(true);
+
+  // Scroll to top of the mobile step container when step changes (not on initial render).
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(min-width: 640px)").matches) return;
+    mobileTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [currentStep]);
 
   return (
     <>
-      {/* Desktop: all sections visible */}
+      {/* Desktop */}
       <div className="hidden sm:block space-y-6">
         {steps.map((step, i) => (
           <div key={i}>{step.content}</div>
         ))}
       </div>
 
-      {/* Mobile: step-by-step wizard */}
+      {/* Mobile */}
       <div className="sm:hidden">
-        {/* Step indicator */}
-        <div className="flex items-center gap-2 mb-4 px-1">
+        <div ref={mobileTopRef} className="scroll-mt-16" aria-hidden />
+        <div className="flex items-center justify-between mb-2 px-1">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground tabular-nums">
+            Step{" "}
+            <span className="font-mono text-foreground">
+              {String(currentStep + 1).padStart(2, "0")}
+            </span>{" "}
+            <span className="text-muted-foreground/60">/</span>{" "}
+            <span className="font-mono">{String(total).padStart(2, "0")}</span>
+          </span>
+          <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground truncate ml-3">
+            {steps[currentStep].label}
+          </span>
+        </div>
+
+        {/* Segmented progress */}
+        <div className="flex items-center gap-1 mb-5 px-1">
           {steps.map((step, i) => (
             <button
               key={i}
               type="button"
               onClick={() => setCurrentStep(i)}
               className={cn(
-                "flex-1 h-1 rounded-full transition-all duration-300",
-                i === currentStep
-                  ? "bg-amber-brand h-1.5"
-                  : i < currentStep
-                    ? "bg-amber-brand/40"
-                    : "bg-muted"
+                "flex-1 h-0.5 rounded-full transition-colors",
+                i <= currentStep ? "bg-foreground" : "bg-border",
               )}
               aria-label={`Step ${i + 1}: ${step.label}`}
             />
           ))}
         </div>
 
-        {/* Step label */}
-        <p className="font-heading text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
-          Step {currentStep + 1} of {steps.length} &mdash; {steps[currentStep].label}
-        </p>
+        <div className="min-h-[300px]">{steps[currentStep].content}</div>
 
-        {/* Step content */}
-        <div className="min-h-[300px]">
-          {steps[currentStep].content}
-        </div>
-
-        {/* Navigation */}
-        <div className="flex items-center justify-between mt-4 pt-3 border-t">
+        <div className="flex items-center justify-between mt-5 pt-3 border-t">
           <Button
             type="button"
             variant="ghost"
@@ -70,21 +85,18 @@ export function ReportWizard({ steps }: Props) {
             disabled={currentStep === 0}
             onClick={() => setCurrentStep((s) => Math.max(0, s - 1))}
           >
-            <ChevronLeft className="h-4 w-4 mr-1" />
+            <ChevronLeft className="size-4" />
             Back
           </Button>
-          <span className="text-xs text-muted-foreground">
-            {currentStep + 1} / {steps.length}
-          </span>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            disabled={currentStep === steps.length - 1}
-            onClick={() => setCurrentStep((s) => Math.min(steps.length - 1, s + 1))}
+            disabled={currentStep === total - 1}
+            onClick={() => setCurrentStep((s) => Math.min(total - 1, s + 1))}
           >
             Next
-            <ChevronRight className="h-4 w-4 ml-1" />
+            <ChevronRight className="size-4" />
           </Button>
         </div>
       </div>

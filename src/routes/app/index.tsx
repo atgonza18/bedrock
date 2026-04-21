@@ -13,25 +13,17 @@ import {
   FileText,
   ClipboardCheck,
   ArrowRight,
-  TrendingUp,
-  Timer,
-  AlertTriangle,
-  BarChart3,
 } from "lucide-react";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { KIND_LABELS } from "@/lib/constants";
+import { KIND_LABELS, reportKindLabel } from "@/lib/constants";
+import { TestKindIcon } from "@/components/test-icons";
+import { kindColor } from "@/lib/test-kind-colors";
+import { cn } from "@/lib/utils";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export const Route = createFileRoute("/app/")({
   component: DashboardPage,
 });
-
-const BAR_COLORS = [
-  "bg-[oklch(0.75_0.16_75)]",
-  "bg-[oklch(0.55_0.08_250)]",
-  "bg-[oklch(0.65_0.12_145)]",
-  "bg-[oklch(0.60_0.15_30)]",
-  "bg-[oklch(0.55_0.12_290)]",
-];
 
 function formatTurnaround(hours: number | null): string {
   if (hours === null) return "--";
@@ -73,7 +65,7 @@ function DashboardPage() {
 
   return (
     <PageTransition>
-    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 space-y-8">
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 space-y-8" data-stagger>
       {/* Greeting */}
       <div>
         <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight">
@@ -84,6 +76,44 @@ function DashboardPage() {
         </p>
       </div>
 
+      {/* Resume draft — field techs most recent in-progress report. Surfaces
+          above everything else on mobile so the most likely next action is
+          one tap away. */}
+      {(() => {
+        if (!myReports) return null;
+        if (isPmOrAdmin) return null;
+        const draft = myReports.find(
+          (r) => r.status === "draft" || r.status === "rejected",
+        );
+        if (!draft) return null;
+        return (
+          <Link
+            to="/app/reports/$reportId"
+            params={{ reportId: draft._id }}
+            className="block rounded-lg border bg-card hover:shadow-md transition-shadow"
+          >
+            <div className="p-4 flex items-center gap-3">
+              <div className="size-10 rounded-md bg-amber-brand/10 flex items-center justify-center shrink-0">
+                <FileText className="size-5 text-amber-brand" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Resume draft
+                </p>
+                <p className="text-sm font-medium font-mono truncate">
+                  {draft.number}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {draft.projectName} ·{" "}
+                  {reportKindLabel(draft.kind, draft.templateName)}
+                </p>
+              </div>
+              <ArrowRight className="size-4 text-muted-foreground" />
+            </div>
+          </Link>
+        );
+      })()}
+
       {/* Needs Attention */}
       {(() => {
         const rejectedCount = myReports?.filter(r => r.status === "rejected").length ?? 0;
@@ -91,50 +121,22 @@ function DashboardPage() {
         const hasAlerts = rejectedCount > 0 || (isPmOrAdmin && queue && queue.length > 0);
         if (!hasAlerts) return null;
         return (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {rejectedCount > 0 && (
-              <Card className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                <CardContent className="py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="size-9 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="size-4 text-red-600 dark:text-red-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-red-800 dark:text-red-300">
-                        {rejectedCount} report{rejectedCount !== 1 ? "s" : ""} need{rejectedCount === 1 ? "s" : ""} corrections
-                      </p>
-                      <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
-                        A reviewer requested changes. Fix and resubmit to continue the approval process.
-                      </p>
-                    </div>
-                    <Button asChild size="sm" variant="outline" className="shrink-0 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50">
-                      <Link to="/app/reports">Review</Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <AlertRow
+                tone="destructive"
+                title={`${rejectedCount} report${rejectedCount !== 1 ? "s" : ""} need${rejectedCount === 1 ? "s" : ""} corrections`}
+                body="A reviewer requested changes. Fix and resubmit to continue the approval process."
+                action={{ label: "Review", href: "/app/reports" }}
+              />
             )}
             {isPmOrAdmin && queue && queue.length > 0 && (
-              <Card className="border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20">
-                <CardContent className="py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="size-9 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0">
-                      <ClipboardCheck className="size-4 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                        {submittedCount} report{submittedCount !== 1 ? "s" : ""} awaiting review
-                      </p>
-                      <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-0.5">
-                        Field reports are waiting for your review and approval.
-                      </p>
-                    </div>
-                    <Button asChild size="sm" variant="outline" className="shrink-0 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50">
-                      <Link to="/app/queue">Review queue</Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <AlertRow
+                tone="attention"
+                title={`${submittedCount} report${submittedCount !== 1 ? "s" : ""} awaiting review`}
+                body="Field reports are waiting for your review and approval."
+                action={{ label: "Review queue", href: "/app/queue" }}
+              />
             )}
           </div>
         );
@@ -142,111 +144,115 @@ function DashboardPage() {
 
       {/* Executive Ops Metrics — admin only */}
       {isAdmin && (
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="size-4 text-muted-foreground" aria-hidden="true" />
-            <h2 className="text-xs font-heading font-semibold text-muted-foreground uppercase tracking-wider">
-              Ops Metrics
+        <section className="space-y-5">
+          <div className="flex items-baseline gap-3">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Operations
             </h2>
-            <span className="text-xs text-muted-foreground/60">&middot; Last 30 days</span>
+            <span className="text-[11px] tracking-[0.12em] uppercase text-muted-foreground/60">
+              Last 30 days
+            </span>
+            <div className="flex-1 h-px bg-border/70" />
           </div>
 
           {adminStats === undefined ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 border rounded-lg overflow-hidden divide-x divide-y sm:divide-y-0 lg:divide-y-0 divide-border">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} className="overflow-hidden">
-                  <CardContent className="py-5">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-8 w-16" />
-                        <Skeleton className="h-3 w-20" />
-                      </div>
-                      <Skeleton className="size-11 rounded-xl" />
-                    </div>
-                  </CardContent>
-                </Card>
+                <div key={i} className="p-5 space-y-2">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-9 w-20" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
               ))}
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <ExecMetricCard
-                  label="Reports Delivered"
+              <div className="grid grid-cols-2 lg:grid-cols-4 border rounded-lg overflow-hidden divide-x divide-y lg:divide-y-0 divide-border bg-card">
+                <ExecMetric
+                  label="Reports delivered"
                   value={adminStats.deliveredCount}
-                  unit="last 30 days"
-                  icon={TrendingUp}
-                  accent="from-blue-500/10 to-indigo-500/5"
-                  iconColor="text-blue-600"
+                  hint="Last 30 days"
                   dimZero
+                  delta={pctDelta(
+                    adminStats.deliveredCount,
+                    adminStats.prevDeliveredCount,
+                  )}
+                  trendPositive="up"
                 />
-                <ExecMetricCard
-                  label="Avg Turnaround"
+                <ExecMetric
+                  label="Avg turnaround"
                   value={formatTurnaround(adminStats.avgTurnaroundHours)}
-                  unit="field to delivery"
-                  icon={Timer}
-                  accent="from-amber-brand/10 to-amber-600/5"
-                  iconColor="text-amber-600"
+                  hint="Field to delivery"
+                  delta={pctDelta(
+                    adminStats.avgTurnaroundHours,
+                    adminStats.prevAvgTurnaroundHours,
+                  )}
+                  trendPositive="down"
                 />
-                <ExecMetricCard
-                  label="Review Queue"
+                <ExecMetric
+                  label="Review queue"
                   value={adminStats.queueDepth}
-                  unit={`${adminStats.submittedCount} submitted \u00B7 ${adminStats.inReviewCount} in review`}
-                  icon={ClipboardCheck}
-                  accent="from-emerald-500/10 to-emerald-600/5"
-                  iconColor="text-emerald-600"
+                  hint={`${adminStats.submittedCount} submitted · ${adminStats.inReviewCount} in review`}
                   dimZero
                 />
-                <ExecMetricCard
-                  label="Rejection Rate"
+                <ExecMetric
+                  label="Rejection rate"
                   value={adminStats.rejectionRate !== null ? `${adminStats.rejectionRate}%` : "--"}
-                  unit={
+                  hint={
                     adminStats.rejectionRate !== null
                       ? `${adminStats.rejectedCount} of ${adminStats.rejectedCount + adminStats.approvedCount} decisions`
-                      : "no decisions yet"
+                      : "No decisions yet"
                   }
-                  icon={AlertTriangle}
-                  accent="from-red-500/8 to-rose-500/4"
-                  iconColor="text-red-500"
+                  delta={pctDelta(
+                    adminStats.rejectionRate,
+                    adminStats.prevRejectionRate,
+                  )}
+                  trendPositive="down"
                 />
               </div>
 
-              {/* Kind breakdown */}
-              <KindBreakdown data={adminStats.deliveredByKind} />
+              {/* Two-column: kind breakdown + activity heatmap */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                <div className="lg:col-span-2">
+                  <KindBreakdown data={adminStats.deliveredByKind} />
+                </div>
+                <div className="lg:col-span-3">
+                  <ActivityHeatmap
+                    cells={adminStats.heatmap.cells}
+                    max={adminStats.heatmap.max}
+                  />
+                </div>
+              </div>
             </>
           )}
         </section>
       )}
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatsCard
-          title="Active Projects"
-          value={projects?.length}
-          icon={FolderKanban}
-          href="/app/projects"
-          accent="from-blue-500/10 to-blue-600/5"
-          iconColor="text-blue-600"
-        />
-        <StatsCard
-          title="My Reports"
-          value={myReports?.length}
-          icon={FileText}
-          href="/app/reports"
-          accent="from-amber-brand/10 to-amber-600/5"
-          iconColor="text-amber-600"
-        />
-        {isPmOrAdmin && (
+      {!isAdmin && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <StatsCard
-            title="Review Queue"
-            value={Array.isArray(queue) ? queue.length : undefined}
-            icon={ClipboardCheck}
-            href="/app/queue"
-            accent="from-emerald-500/10 to-emerald-600/5"
-            iconColor="text-emerald-600"
+            title="Active projects"
+            value={projects?.length}
+            icon={FolderKanban}
+            href="/app/projects"
           />
-        )}
-      </div>
+          <StatsCard
+            title="My reports"
+            value={myReports?.length}
+            icon={FileText}
+            href="/app/reports"
+          />
+          {isPmOrAdmin && (
+            <StatsCard
+              title="Review queue"
+              value={Array.isArray(queue) ? queue.length : undefined}
+              icon={ClipboardCheck}
+              href="/app/queue"
+            />
+          )}
+        </div>
+      )}
 
       {/* Quick access sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -296,7 +302,7 @@ function DashboardPage() {
                         <p className="text-xs text-muted-foreground truncate">
                           {r.projectName} &middot;{" "}
                           <span className="capitalize">
-                            {KIND_LABELS[r.kind] ?? r.kind}
+                            {reportKindLabel(r.kind, r.templateName)}
                           </span>
                         </p>
                       </div>
@@ -375,61 +381,202 @@ function DashboardPage() {
   );
 }
 
-// ─── Executive Metric Card ───────────────────────────────────────────────────
+// ─── Alert row (attention / destructive) ────────────────────────────────────
 
-function ExecMetricCard({
-  label,
-  value,
-  unit,
-  icon: Icon,
-  accent,
-  iconColor,
-  dimZero,
+function AlertRow({
+  tone,
+  title,
+  body,
+  action,
 }: {
-  label: string;
-  value: string | number;
-  unit?: string;
-  icon: React.ComponentType<{ className?: string }>;
-  accent: string;
-  iconColor: string;
-  dimZero?: boolean;
+  tone: "attention" | "destructive";
+  title: string;
+  body: string;
+  action: { label: string; href: string };
 }) {
-  const isZero = value === 0 || value === "0";
-  const isDim = value === "--" || (dimZero && isZero);
-
+  const borderColor =
+    tone === "destructive" ? "border-l-destructive" : "border-l-amber-brand";
   return (
-    <Card className="relative overflow-hidden group">
-      {/* Gradient accent on hover */}
-      <div
-        className={`absolute inset-0 bg-gradient-to-br ${accent} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}
-      />
-      <CardContent className="relative py-5">
-        <div className="flex items-center justify-between">
-          <div className="min-w-0">
-            <p className="text-sm text-muted-foreground font-medium">
-              {label}
-            </p>
-            <p
-              className={`font-heading text-2xl font-bold tracking-tight mt-1 ${
-                isDim ? "text-muted-foreground/50" : ""
-              }`}
-            >
-              {value}
-            </p>
-            {unit && (
-              <p className="text-xs text-muted-foreground mt-0.5">{unit}</p>
-            )}
+    <Card className={`border-l-4 ${borderColor}`}>
+      <CardContent className="py-4">
+        <div className="flex items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">{title}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{body}</p>
           </div>
-          <div className="size-11 rounded-xl bg-muted flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-200">
-            <Icon className={`size-5 ${iconColor}`} aria-hidden="true" />
-          </div>
+          <Button asChild size="sm" variant="outline" className="shrink-0">
+            <Link to={action.href}>
+              {action.label}
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </Button>
         </div>
       </CardContent>
     </Card>
   );
 }
 
-// ─── Kind Breakdown (CSS bar chart) ──────────────────────────────────────────
+// ─── Trend delta computation ───────────────────────────────────────────────
+// Returns null if either value is null OR prior is zero (no baseline).
+
+function pctDelta(
+  current: number | null | undefined,
+  prior: number | null | undefined,
+): number | null {
+  if (current == null || prior == null) return null;
+  if (prior === 0) return null;
+  return Math.round(((current - prior) / prior) * 1000) / 10;
+}
+
+// ─── Executive metric cell (inside grouped panel) ──────────────────────────
+
+function ExecMetric({
+  label,
+  value,
+  hint,
+  dimZero,
+  delta,
+  trendPositive = "up",
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+  dimZero?: boolean;
+  /** Signed percentage (+12.5 means 12.5% higher than prior window). */
+  delta?: number | null;
+  /** Which direction of change is "good"; controls the delta color. */
+  trendPositive?: "up" | "down";
+}) {
+  const isZero = value === 0 || value === "0";
+  const isDim = value === "--" || (dimZero && isZero);
+
+  const deltaTone =
+    delta == null || delta === 0
+      ? "neutral"
+      : (trendPositive === "up" ? delta > 0 : delta < 0)
+        ? "good"
+        : "bad";
+
+  return (
+    <div className="p-5 space-y-1.5">
+      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+      <div className="flex items-baseline gap-2.5">
+        <p
+          className={cn(
+            "font-heading text-3xl font-semibold tracking-tight tabular-nums",
+            isDim && "text-muted-foreground/50",
+          )}
+        >
+          {value}
+        </p>
+        {delta != null && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-0.5 text-xs font-medium tabular-nums",
+              deltaTone === "good" && "text-emerald-600 dark:text-emerald-500",
+              deltaTone === "bad" && "text-destructive",
+              deltaTone === "neutral" && "text-muted-foreground",
+            )}
+            title={`${delta > 0 ? "+" : ""}${delta}% vs prior 30 days`}
+          >
+            {delta === 0 ? (
+              <Minus className="size-3" strokeWidth={2.5} />
+            ) : delta > 0 ? (
+              <TrendingUp className="size-3" strokeWidth={2.5} />
+            ) : (
+              <TrendingDown className="size-3" strokeWidth={2.5} />
+            )}
+            {delta > 0 ? "+" : ""}
+            {delta}%
+          </span>
+        )}
+      </div>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+// ─── Activity heatmap (7×24 hour-of-week delivery grid) ─────────────────────
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function ActivityHeatmap({
+  cells,
+  max,
+}: {
+  cells: number[][];
+  max: number;
+}) {
+  // Reorder rows to Mon–Sun (more natural for a work-centric view).
+  const reordered = [1, 2, 3, 4, 5, 6, 0].map((d) => ({
+    label: DAY_LABELS[d],
+    row: cells[d],
+  }));
+
+  const ticks = [0, 6, 12, 18, 23];
+
+  return (
+    <div className="rounded-lg border bg-card h-full flex flex-col">
+      <div className="px-5 py-3 border-b flex items-baseline justify-between">
+        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          Delivery activity
+        </p>
+        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
+          Hour of week · last 30 days
+        </p>
+      </div>
+      <div className="p-5 flex-1 flex flex-col justify-center">
+        {max === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">
+            No deliveries in the last 30 days.
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {reordered.map(({ label, row }) => (
+              <div key={label} className="flex items-center gap-2">
+                <span className="w-7 text-[10px] uppercase tracking-[0.1em] text-muted-foreground tabular-nums">
+                  {label}
+                </span>
+                <div className="flex-1 grid grid-cols-[repeat(24,minmax(0,1fr))] gap-0.5">
+                  {row.map((v, h) => {
+                    const intensity = v === 0 ? 0 : 0.12 + (v / max) * 0.88;
+                    return (
+                      <div
+                        key={h}
+                        className="aspect-square rounded-[2px]"
+                        style={{
+                          backgroundColor:
+                            v === 0
+                              ? "var(--muted)"
+                              : `color-mix(in oklch, var(--amber-brand) ${intensity * 100}%, transparent)`,
+                        }}
+                        title={`${label} ${String(h).padStart(2, "0")}:00 — ${v} deliver${v === 1 ? "y" : "ies"}`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center gap-2 pt-1">
+              <span className="w-7" />
+              <div className="flex-1 grid grid-cols-[repeat(24,minmax(0,1fr))] gap-0.5 text-[9px] text-muted-foreground tabular-nums">
+                {Array.from({ length: 24 }).map((_, h) => (
+                  <div key={h} className="text-center">
+                    {ticks.includes(h) ? String(h).padStart(2, "0") : ""}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Volume by test type ────────────────────────────────────────────────────
 
 function KindBreakdown({
   data,
@@ -438,94 +585,87 @@ function KindBreakdown({
 }) {
   if (data.length === 0) {
     return (
-      <Card className="overflow-hidden">
-        <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-          <BarChart3 className="size-8 text-muted-foreground/20 mb-2" aria-hidden="true" />
-          <p className="text-sm text-muted-foreground">
-            No reports delivered in the last 30 days.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="rounded-lg border py-8 px-5 text-center text-sm text-muted-foreground bg-card">
+        No reports delivered in the last 30 days.
+      </div>
     );
   }
 
   const maxCount = Math.max(...data.map((d) => d.count));
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-heading font-semibold">
-          Volume by Test Type
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 pb-5">
-        {data.map((d, i) => {
+    <div className="rounded-lg border bg-card h-full flex flex-col">
+      <div className="px-5 py-3 border-b">
+        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          Volume by test type
+        </p>
+      </div>
+      <div className="px-5 py-4 space-y-3 flex-1">
+        {data.map((d) => {
           const pct = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
-          const color = BAR_COLORS[i % BAR_COLORS.length];
-
+          const c = kindColor(d.kind);
           return (
             <div key={d.kind} className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground w-28 sm:w-36 lg:w-44 shrink-0 truncate">
-                {KIND_LABELS[d.kind] ?? d.kind.replace(/_/g, " ")}
-              </span>
-              <div className="flex-1 h-7 bg-muted/60 rounded-md overflow-hidden">
+              <div className="flex items-center gap-2 w-32 shrink-0 min-w-0">
+                <TestKindIcon
+                  kind={d.kind}
+                  width={14}
+                  height={14}
+                  className="shrink-0"
+                  style={{ color: c.oklch }}
+                />
+                <span className="text-sm truncate">
+                  {KIND_LABELS[d.kind] ?? d.kind.replace(/_/g, " ")}
+                </span>
+              </div>
+              <div className="flex-1 h-2 bg-muted/60 rounded-sm overflow-hidden">
                 <div
-                  className={`h-full ${color} rounded-md transition-all duration-500 ease-out`}
-                  style={{ width: `${pct}%` }}
+                  className="h-full rounded-sm transition-all duration-500 ease-out"
+                  style={{ width: `${pct}%`, backgroundColor: c.oklch }}
                 />
               </div>
-              <span className="text-sm font-mono font-semibold w-8 text-right shrink-0 tabular-nums">
+              <span className="text-sm font-mono font-medium w-6 text-right shrink-0 tabular-nums text-muted-foreground">
                 {d.count}
               </span>
             </div>
           );
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
-// ─── Stats Card (existing) ───────────────────────────────────────────────────
+// ─── Stats card (non-admin quick nav) ──────────────────────────────────────
 
 function StatsCard({
   title,
   value,
   icon: Icon,
   href,
-  accent,
-  iconColor,
 }: {
   title: string;
   value: number | undefined;
   icon: React.ComponentType<{ className?: string }>;
   href: string;
-  accent: string;
-  iconColor: string;
 }) {
   return (
     <Link to={href}>
-      <Card className="relative overflow-hidden hover:shadow-md transition-shadow duration-150 group">
-        {/* Gradient accent — sits behind everything, fills full card */}
-        <div
-          className={`absolute inset-0 bg-gradient-to-br ${accent} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}
-        />
-        <CardContent className="relative py-5">
+      <Card className="hover:border-foreground/20 transition-colors">
+        <CardContent className="py-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground font-medium">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                 {title}
               </p>
               {value !== undefined ? (
-                <p className="font-heading text-3xl font-bold tracking-tight mt-1">
+                <p className="font-heading text-3xl font-semibold tracking-tight mt-1 tabular-nums">
                   {value}
                 </p>
               ) : (
                 <Skeleton className="h-9 w-12 mt-1" />
               )}
             </div>
-            <div className="size-11 rounded-xl bg-muted flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-              <Icon className={`size-5 ${iconColor}`} />
-            </div>
+            <Icon className="size-5 text-muted-foreground" />
           </div>
         </CardContent>
       </Card>

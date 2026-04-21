@@ -54,6 +54,10 @@ export const deliver = internalAction({
       dcpLayers: bundle.dcpLayers,
       pileLoadIncrements: bundle.pileLoadIncrements,
       approval: bundle.approval,
+      specZone: bundle.specZone,
+      pileTypeInfo: bundle.pileTypeInfo,
+      photoUrls: bundle.photoUrls,
+      customPhotoUrls: bundle.customPhotoUrls,
     };
     const pdfBytes = await renderReportPdf(pdfBundle);
 

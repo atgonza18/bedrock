@@ -8,7 +8,10 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Camera, Trash2, Loader2, XIcon, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { Camera, Trash2, Loader2, XIcon, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, MapPin, Share2 } from "lucide-react";
+import { haptics } from "@/lib/haptics";
+import { captureGps, formatCoords } from "@/lib/geolocation";
+import { useLongPress } from "@/hooks/use-long-press";
 
 type Attachment = Doc<"attachments"> & { url: string | null };
 
@@ -25,11 +28,14 @@ export function PhotoCapture({ reportId, attachments, readOnly }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
+  const [actionsIndex, setActionsIndex] = useState<number | null>(null);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
+      // Best-effort GPS stamp — captured once per burst. Never blocks upload.
+      const gps = await captureGps();
       for (const file of Array.from(files)) {
         const uploadUrl = await generateUrl({});
         const res = await fetch(uploadUrl, {
@@ -45,7 +51,15 @@ export function PhotoCapture({ reportId, attachments, readOnly }: Props) {
           fileName: file.name,
           contentType: file.type,
           sizeBytes: file.size,
+          ...(gps && {
+            gpsLat: gps.lat,
+            gpsLng: gps.lng,
+            gpsAccuracyM: gps.accuracyM,
+            gpsCapturedAt: gps.capturedAt,
+            gpsSource: gps.source,
+          }),
         });
+        haptics.tap();
       }
     } finally {
       setUploading(false);
@@ -143,41 +157,85 @@ export function PhotoCapture({ reportId, attachments, readOnly }: Props) {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {attachments.map((a, i) => (
-            <div key={a._id} className="relative group rounded-md overflow-hidden border">
-              {a.url ? (
-                <button
-                  type="button"
-                  className="w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => setViewingIndex(i)}
-                >
-                  <img
-                    src={a.url}
-                    alt={a.fileName}
-                    className="aspect-square object-cover w-full"
-                  />
-                </button>
-              ) : (
-                <div className="aspect-square bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                  Loading...
-                </div>
-              )}
-              {!readOnly && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() =>
-                    void removeAttachment({ attachmentId: a._id })
-                  }
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
+            <ThumbnailCell
+              key={a._id}
+              attachment={a}
+              onOpen={() => setViewingIndex(i)}
+              onLongPress={() => setActionsIndex(i)}
+              readOnly={readOnly}
+              onDelete={() => void removeAttachment({ attachmentId: a._id })}
+            />
           ))}
         </div>
       )}
+
+      {/* Long-press actions sheet */}
+      <Dialog open={actionsIndex !== null} onOpenChange={() => setActionsIndex(null)}>
+        <DialogContent className="sm:max-w-sm p-0 overflow-hidden">
+          <DialogTitle className="sr-only">Photo actions</DialogTitle>
+          {(() => {
+            if (actionsIndex === null) return null;
+            const a = attachments[actionsIndex];
+            if (!a) return null;
+            return (
+              <div className="divide-y">
+                {a.url && (
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+                    onClick={async () => {
+                      setActionsIndex(null);
+                      // navigator.share: opens the native share sheet on
+                      // supported browsers (iOS Safari, Chrome Android).
+                      try {
+                        if (navigator.share && a.url) {
+                          await navigator.share({
+                            title: a.fileName,
+                            url: a.url,
+                          });
+                        } else if (a.url) {
+                          await navigator.clipboard?.writeText(a.url);
+                        }
+                      } catch {
+                        // user canceled
+                      }
+                    }}
+                  >
+                    <Share2 className="size-4 text-muted-foreground" />
+                    <span className="text-sm">Share photo</span>
+                  </button>
+                )}
+                {a.gpsLat !== undefined && a.gpsLng !== undefined && (
+                  <a
+                    href={`https://www.google.com/maps?q=${a.gpsLat},${a.gpsLng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
+                    onClick={() => setActionsIndex(null)}
+                  >
+                    <MapPin className="size-4 text-muted-foreground" />
+                    <span className="text-sm">Open in Maps</span>
+                  </a>
+                )}
+                {!readOnly && (
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-destructive/10 text-destructive transition-colors"
+                    onClick={() => {
+                      setActionsIndex(null);
+                      void removeAttachment({ attachmentId: a._id });
+                      haptics.warn();
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                    <span className="text-sm font-medium">Delete photo</span>
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Lightbox */}
       <Dialog open={viewingIndex !== null} onOpenChange={() => setViewingIndex(null)}>
@@ -223,6 +281,28 @@ export function PhotoCapture({ reportId, attachments, readOnly }: Props) {
               />
             </div>
           )}
+
+          {/* GPS stamp (if captured) */}
+          {viewingAttachment?.gpsLat !== undefined &&
+            viewingAttachment?.gpsLng !== undefined && (
+              <a
+                href={`https://www.google.com/maps?q=${viewingAttachment.gpsLat},${viewingAttachment.gpsLng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white/90 hover:bg-black/80 transition-colors"
+                title="Open in Google Maps"
+              >
+                <MapPin className="size-3" strokeWidth={2.5} />
+                <span className="tabular-nums">
+                  {formatCoords(viewingAttachment.gpsLat, viewingAttachment.gpsLng)}
+                </span>
+                {viewingAttachment.gpsAccuracyM !== undefined && (
+                  <span className="text-white/50 tabular-nums">
+                    ±{Math.round(viewingAttachment.gpsAccuracyM)}m
+                  </span>
+                )}
+              </a>
+            )}
 
           {/* Bottom bar: nav + zoom controls */}
           <div className="flex items-center justify-between px-4 py-3 border-t border-white/10">
@@ -293,5 +373,71 @@ export function PhotoCapture({ reportId, attachments, readOnly }: Props) {
         </DialogContent>
       </Dialog>
     </section>
+  );
+}
+
+type ThumbnailCellProps = {
+  attachment: Attachment;
+  onOpen: () => void;
+  onLongPress: () => void;
+  readOnly?: boolean;
+  onDelete: () => void;
+};
+
+function ThumbnailCell({
+  attachment,
+  onOpen,
+  onLongPress,
+  readOnly,
+  onDelete,
+}: ThumbnailCellProps) {
+  const longPress = useLongPress(onLongPress, { delay: 500 });
+  const hasGps =
+    attachment.gpsLat !== undefined && attachment.gpsLng !== undefined;
+  return (
+    <div className="relative group rounded-md overflow-hidden border">
+      {attachment.url ? (
+        <button
+          type="button"
+          className="w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={onOpen}
+          {...longPress}
+        >
+          <img
+            src={attachment.url}
+            alt={attachment.fileName}
+            className="aspect-square object-cover w-full"
+            draggable={false}
+          />
+        </button>
+      ) : (
+        <div className="aspect-square bg-muted flex items-center justify-center text-xs text-muted-foreground">
+          Loading...
+        </div>
+      )}
+      {hasGps && (
+        <span
+          className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] text-white/90"
+          aria-label="Has location data"
+        >
+          <MapPin className="size-2.5" strokeWidth={2.5} />
+        </span>
+      )}
+      {!readOnly && (
+        <Button
+          type="button"
+          variant="destructive"
+          size="icon-sm"
+          className="absolute top-1.5 right-1.5 shadow-sm bg-background/90 hover:bg-background text-destructive backdrop-blur-sm sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          aria-label="Remove photo"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      )}
+    </div>
   );
 }

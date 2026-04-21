@@ -43,6 +43,7 @@ export const reportKind = v.union(
   v.literal("proof_roll"),
   v.literal("dcp"),
   v.literal("pile_load"),
+  v.literal("custom"),
 );
 
 export const reportStatus = v.union(
@@ -129,6 +130,13 @@ export default defineSchema({
     // Only set when role === "client". Links the user to their client company
     // so we can scope data access to their company's projects/reports.
     clientId: v.optional(v.id("clients")),
+    // Per-user permission overrides. When unset, the role's default applies.
+    // Admin always has all permissions regardless of these flags.
+    canViewAllProjects: v.optional(v.boolean()),
+    canManageTeam: v.optional(v.boolean()),
+    canViewAllocation: v.optional(v.boolean()),
+    canApproveReports: v.optional(v.boolean()),
+    canManageTestTemplates: v.optional(v.boolean()),
   })
     .index("by_userId", ["userId"])
     .index("by_org_and_userId", ["orgId", "userId"])
@@ -305,6 +313,7 @@ export default defineSchema({
       v.id("proofRollObservations"),
       v.id("dcpTests"),
       v.id("pileLoadTests"),
+      v.id("customTestResponses"),
     ),
   })
     .index("by_org_and_status", ["orgId", "status"])
@@ -510,9 +519,40 @@ export default defineSchema({
     sizeBytes: v.number(),
     caption: v.optional(v.string()),
     uploadedByUserId: v.id("users"),
+    // Optional geolocation stamp captured at upload time. Lets clients see
+    // *where* a photo was taken without relying on EXIF (which iOS strips on
+    // camera-capture web uploads). `gpsSource` distinguishes a fresh device
+    // fix from a fallback.
+    gpsLat: v.optional(v.number()),
+    gpsLng: v.optional(v.number()),
+    gpsAccuracyM: v.optional(v.number()),
+    gpsCapturedAt: v.optional(v.number()),
+    gpsSource: v.optional(
+      v.union(v.literal("device"), v.literal("exif"), v.literal("manual")),
+    ),
   })
     .index("by_parent", ["parentKind", "parentId"])
     .index("by_org_and_parent", ["orgId", "parentKind", "parentId"]),
+
+  /**
+   * Web-push subscription endpoints. One row per (user, device). The `endpoint`
+   * URL is unique per device/install; we upsert on it so reinstalling the PWA
+   * refreshes the keys cleanly. `disabledAt` marks endpoints the push server
+   * reported as 404/410 ("Gone") so we stop sending to them.
+   */
+  pushSubscriptions: defineTable({
+    userId: v.id("users"),
+    orgId: v.id("orgs"),
+    endpoint: v.string(),
+    p256dhKey: v.string(),
+    authKey: v.string(),
+    userAgent: v.optional(v.string()),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    disabledAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_endpoint", ["endpoint"]),
 
   reportAuditLog: defineTable({
     orgId: v.id("orgs"),
@@ -598,6 +638,51 @@ export default defineSchema({
     status: v.union(v.literal("active"), v.literal("out_of_service"), v.literal("retired")),
     notes: v.optional(v.string()),
   }).index("by_org_and_status", ["orgId", "status"]),
+
+  // ---------- Custom test templates & responses ----------
+  //
+  // Templates are org-owned forms PMs/admins build themselves for edge-case
+  // tests that don't fit the five built-in kinds. `fieldsJson` stores the
+  // ordered list of field definitions as a JSON string — shape is validated
+  // by convex/lib/customTemplates.ts (both when creating and when rendering).
+  // We use a JSON string instead of a strict validator because the discriminated
+  // union of 10+ field types (including recursive tables) is awkward to express
+  // in Convex's v.union() and would need a migration every time we add a type.
+  testTemplates: defineTable({
+    orgId: v.id("orgs"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdByUserId: v.id("users"),
+    fieldsJson: v.string(),
+  })
+    .index("by_org_and_status", ["orgId", "status"])
+    .index("by_org_and_name", ["orgId", "name"]),
+
+  // One row per custom report submission. `templateFieldsJson` snapshots the
+  // template's fields at creation time, so later edits to the template never
+  // corrupt a submitted report. `valuesJson` is the tech's submitted answers,
+  // keyed by field id.
+  customTestResponses: defineTable({
+    orgId: v.id("orgs"),
+    reportId: v.optional(v.id("reports")),
+    templateId: v.id("testTemplates"),
+    templateNameAtCreation: v.string(),
+    templateFieldsJson: v.string(),
+    valuesJson: v.string(),
+  }).index("by_report", ["reportId"]),
+
+  // Reusable field blocks — "Site conditions", "Inspector info", etc.
+  // A PM saves a group of fields once, then inserts them into any template.
+  // Stored as fieldsJson (same shape as testTemplates but typically just a
+  // handful of fields). Org-scoped; not versioned.
+  templateBlocks: defineTable({
+    orgId: v.id("orgs"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    createdByUserId: v.id("users"),
+    fieldsJson: v.string(),
+  }).index("by_org_and_name", ["orgId", "name"]),
 
   // ---------- Technician certifications ----------
   techCertifications: defineTable({

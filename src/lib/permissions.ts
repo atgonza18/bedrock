@@ -4,9 +4,20 @@
  * buttons that would fail.
  */
 
+export type Permission =
+  | "canViewAllProjects"
+  | "canManageTeam"
+  | "canViewAllocation"
+  | "canApproveReports"
+  | "canManageTestTemplates";
+
+type MembershipWithPerms = {
+  role: string;
+} & Partial<Record<Permission, boolean | undefined>>;
+
 type MeResult = {
   state: "ok";
-  membership: { role: string };
+  membership: MembershipWithPerms;
   userId: string;
 };
 
@@ -33,6 +44,26 @@ export function canEditReport(
   return report.createdByUserId === me.userId;
 }
 
+/**
+ * Core permission check — mirrors `permits()` in convex/lib/auth.ts exactly.
+ * Admin always has every permission; client never has internal permissions;
+ * PM has `canApproveReports` by default; explicit toggles on the membership
+ * override the defaults for pm/tech.
+ */
+export function permits(me: MeResult, permission: Permission): boolean {
+  const role = me.membership.role;
+  if (role === "admin") return true;
+  if (role === "client") return false;
+
+  const explicit = me.membership[permission];
+  if (explicit === true) return true;
+  if (explicit === false) return false;
+
+  if (permission === "canApproveReports" && role === "pm") return true;
+  if (permission === "canManageTestTemplates" && role === "pm") return true;
+  return false;
+}
+
 export function canReview(me: MeResult): boolean {
-  return me.membership.role === "pm" || me.membership.role === "admin";
+  return permits(me, "canApproveReports");
 }

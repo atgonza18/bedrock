@@ -1,7 +1,7 @@
 import { v, ConvexError } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
-import { requireMember, requireRole, requireProjectAccess, orgScoped } from "./lib/auth";
+import { requireMember, requireRole, requirePermission, requireProjectAccess, permits, orgScoped } from "./lib/auth";
 import { projectStatus, projectAssignmentRole } from "./schema";
 
 // ---------- Queries ----------
@@ -10,7 +10,8 @@ import { projectStatus, projectAssignmentRole } from "./schema";
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const { org, membership, userId } = await requireMember(ctx);
+    const member = await requireMember(ctx);
+    const { org, membership, userId } = member;
 
     const projects = await ctx.db
       .query("projects")
@@ -19,7 +20,7 @@ export const list = query({
       )
       .take(200);
 
-    if (membership.role === "admin") {
+    if (permits(member, "canViewAllProjects")) {
       return projects;
     }
 
@@ -80,6 +81,79 @@ export const getById = query({
     }
 
     return { project, client, assignments: assignmentDetails, defaultRecipients };
+  },
+});
+
+/**
+ * Tech/PM allocation across projects. Admin-only.
+ *
+ * Returns one row per active internal member (pm, tech, admin) with the
+ * set of active projects they're assigned to. Drives the admin roster
+ * page where directors decide who has capacity to shift between projects.
+ */
+export const listAllocations = query({
+  args: {},
+  handler: async (ctx) => {
+    const { org } = await requirePermission(ctx, "canViewAllocation");
+
+    const memberships = await ctx.db
+      .query("orgMemberships")
+      .withIndex("by_org_and_userId", (q) => q.eq("orgId", org._id))
+      .take(500);
+
+    const activeInternal = memberships.filter(
+      (m) =>
+        m.status === "active" &&
+        (m.role === "admin" || m.role === "pm" || m.role === "tech"),
+    );
+
+    const activeProjects = await ctx.db
+      .query("projects")
+      .withIndex("by_org_and_status", (q) =>
+        q.eq("orgId", org._id).eq("status", "active"),
+      )
+      .take(500);
+    const projectById = new Map(activeProjects.map((p) => [p._id, p]));
+
+    const rows = [];
+    for (const m of activeInternal) {
+      const profile = await ctx.db
+        .query("userProfiles")
+        .withIndex("by_userId", (q) => q.eq("userId", m.userId))
+        .unique();
+      const authUser = await ctx.db.get("users", m.userId);
+
+      const assignments = await ctx.db
+        .query("projectAssignments")
+        .withIndex("by_user", (q) => q.eq("userId", m.userId))
+        .take(200);
+
+      const activeAssignments = assignments
+        .filter((a) => projectById.has(a.projectId))
+        .map((a) => {
+          const p = projectById.get(a.projectId)!;
+          return {
+            assignmentId: a._id,
+            projectId: a.projectId,
+            projectName: p.name,
+            jobNumber: p.jobNumber,
+            role: a.role,
+          };
+        })
+        .sort((a, b) => a.projectName.localeCompare(b.projectName));
+
+      rows.push({
+        userId: m.userId,
+        membershipId: m._id,
+        fullName: profile?.fullName ?? authUser?.email ?? "Unknown",
+        email: authUser?.email ?? null,
+        orgRole: m.role,
+        assignments: activeAssignments,
+      });
+    }
+
+    rows.sort((a, b) => a.fullName.localeCompare(b.fullName));
+    return rows;
   },
 });
 
@@ -171,7 +245,7 @@ export const assign = mutation({
     role: projectAssignmentRole,
   },
   handler: async (ctx, args) => {
-    const { org } = await requireRole(ctx, ["admin"]);
+    const { org } = await requirePermission(ctx, "canManageTeam");
     orgScoped(org._id, await ctx.db.get("projects", args.projectId));
 
     // Verify the user is a member of the same org.
@@ -214,7 +288,7 @@ export const assign = mutation({
 export const unassign = mutation({
   args: { assignmentId: v.id("projectAssignments") },
   handler: async (ctx, { assignmentId }) => {
-    const { org } = await requireRole(ctx, ["admin"]);
+    const { org } = await requirePermission(ctx, "canManageTeam");
     orgScoped(
       org._id,
       await ctx.db.get("projectAssignments", assignmentId),

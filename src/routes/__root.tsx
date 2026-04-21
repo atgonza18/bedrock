@@ -1,5 +1,6 @@
 import { Outlet, createRootRoute, useRouterState } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -11,11 +12,18 @@ function RootLayout() {
   const isLoading = useRouterState({ select: (s) => s.isLoading });
 
   return (
-    <TooltipProvider>
-      {isLoading && <div className="route-loading-bar" />}
-      <Outlet />
-      <Toaster richColors closeButton />
-      {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
-    </TooltipProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <TooltipProvider>
+        {isLoading && <div className="route-loading-bar" />}
+        <Outlet />
+        <Toaster richColors closeButton />
+        {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
+      </TooltipProvider>
+    </ThemeProvider>
   );
 }
